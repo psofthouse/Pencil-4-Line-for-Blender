@@ -33,12 +33,12 @@ from .pencil4_render_session import Pencil4RenderSession as RenderSession
 from typing import Tuple
 import bpy
 import gpu
-import bgl
 import blf
-import time
 from struct import pack
 from enum import IntEnum
+from mathutils import Matrix
 from gpu_extras.batch import batch_for_shader
+from gpu_extras.presets import draw_texture_2d
 
 class ViewportLineRenderSettings(bpy.types.PropertyGroup):
     enable: bpy.props.BoolProperty(default=False)
@@ -68,7 +68,6 @@ class ViewportLineRenderManager:
             self.collection_index = -1
             self.handle = None
             self.handle_2d = None
-            self.tex_buffer = None
             self.render_session_dict = {}
 
     @staticmethod
@@ -82,10 +81,6 @@ class ViewportLineRenderManager:
         if dict_value is not None and dict_value.handle_2d is not None:
             space.draw_handler_remove(dict_value.handle_2d, "WINDOW")
             dict_value.handle_2d = None
-            modified = True
-        if dict_value is not None and dict_value.tex_buffer is not None:
-            bgl.glDeleteTextures(1, dict_value.tex_buffer)
-            dict_value.tex_buffer = None
             modified = True
         for session in dict_value.render_session_dict.values():
             if session.registered_timer_func:
@@ -250,56 +245,6 @@ class ViewportLineRenderManager:
             render_session.render_mode = cls.RenderMode.Initialize
             region.tag_redraw()
 
-    shader = None
-    batch = None
-    uniform_bg = None
-
-    @classmethod
-    def __setup_shader(cls):
-        if cls.shader is None:
-            vertex_shader = '''
-                in vec2 position;
-                in vec2 uv;
-
-                out vec2 uvInterp;
-
-                void main()
-                {
-                    uvInterp = uv;
-                    gl_Position = vec4(position, 0.0, 1.0);
-                }
-            '''
-
-            fragment_shader = '''
-                uniform sampler2D image;
-                uniform float alpha;
-                uniform vec4 bg;
-
-                in vec2 uvInterp;
-
-                out vec4 FragColor;
-
-                void main()
-                {
-                    vec4 line = alpha * texture(image, uvInterp);
-                    FragColor.rgb = bg.rgb * bg.a * (1 - line.a) + line.rgb;
-                    FragColor.a = 1 - (1 - bg.a) * (1 - line.a);
-                }
-            '''
-            if bpy.app.version < (3, 1):
-                fragment_shader = fragment_shader.replace("out vec4 FragColor", "")
-                fragment_shader = fragment_shader.replace("FragColor", "gl_FragColor")
-
-            cls.shader = gpu.types.GPUShader(vertex_shader, fragment_shader)
-            cls.batch = batch_for_shader(
-                cls.shader, 'TRI_FAN',
-                {
-                    "position": ((-1, -1), (1, -1), (1, 1), (-1, 1)),
-                    "uv": ((0, 0), (1, 0), (1, 1), (0, 1)),
-                },
-            )
-            cls.uniform_bg = cls.shader.uniform_from_name("bg")
-
     @staticmethod
     def camera_border(scene: bpy.types.Scene, region: bpy.types.Region, space: bpy.types.SpaceView3D, rv3d: bpy.types.RegionView3D):
         from bpy_extras.view3d_utils import location_3d_to_region_2d
@@ -314,17 +259,6 @@ class ViewportLineRenderManager:
 
         settings = cls.get_settings(space)
         if settings is None or not settings.enable:
-            return
-        dict_value = cls.get(space)
-        if dict_value.tex_buffer is None:
-            dict_value.tex_buffer = bgl.Buffer(bgl.GL_INT, 1)
-            bgl.glGenTextures(1, dict_value.tex_buffer)
-            bgl.glActiveTexture(bgl.GL_TEXTURE0)
-            bgl.glBindTexture(bgl.GL_TEXTURE_2D, dict_value.tex_buffer.to_list()[0])
-            bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
-            bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
-        tex = dict_value.tex_buffer.to_list()[0]
-        if tex is None:
             return
 
         region: bpy.types.Region = bpy.context.region
@@ -391,34 +325,28 @@ class ViewportLineRenderManager:
                 render_session.registered_timer_func,
                 first_interval=cls.__timeout2_interval)
 
-        bg_r = settings.background_color[0] if settings.enalbe_background_color else 0
-        bg_g = settings.background_color[1] if settings.enalbe_background_color else 0
-        bg_b = settings.background_color[2] if settings.enalbe_background_color else 0
-        bg_a = settings.background_color[3] if settings.enalbe_background_color else 0
+        with gpu.matrix.push_pop():
+            gpu.matrix.load_matrix(Matrix.Identity(4))
+            gpu.matrix.load_projection_matrix(Matrix.Identity(4))
 
-        cls.__setup_shader()
-        shader = cls.shader
-        batch = cls.batch
+            width = region.width
+            height = region.height
+            draw_line = pixels is not None and len(pixels) == width * height * 4
 
-        bgl.glEnable(bgl.GL_BLEND)
-        bgl.glBlendFunc(bgl.GL_ONE, bgl.GL_ONE_MINUS_SRC_ALPHA)
-        bgl.glActiveTexture(bgl.GL_TEXTURE0)
-        shader.bind()
-        width = region.width
-        height = region.height
-        if pixels is not None and len(pixels) == width * height * 4:
-            pixels = bgl.Buffer(bgl.GL_BYTE, width * height * 4, pixels)
-            bgl.glBindTexture(bgl.GL_TEXTURE_2D, tex)
-            bgl.glTexImage2D(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA, width, height, 0,\
-                bgl.GL_RGBA, bgl.GL_UNSIGNED_BYTE, pixels)
-            shader.uniform_float("alpha", 1.0)
-        else:
-            bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
-            shader.uniform_float("alpha", 0.0)
-            bg_a *= 0.3
-        shader.uniform_float("image", 0)
-        shader.uniform_vector_float(cls.uniform_bg, pack("4f", bg_r, bg_g, bg_b, bg_a), 4)
-        batch.draw(shader)
+            if settings.enalbe_background_color:
+                tex = gpu.types.GPUTexture((8, 8))
+                color = list(settings.background_color)
+                if not draw_line:
+                    color[3] *= 0.3
+                tex.clear(format="FLOAT", value=color)
+                gpu.state.blend_set("ALPHA")
+                draw_texture_2d(tex, (-1, -1), 2, 2)
+
+            if draw_line:
+                pixels = gpu.types.Buffer("FLOAT", width * height * 4, pixels)
+                tex = gpu.types.GPUTexture((width, height), data=pixels)
+                gpu.state.blend_set("ALPHA_PREMULT")
+                draw_texture_2d(tex, (-1, -1), 2, 2)
 
 
     @classmethod
@@ -428,9 +356,6 @@ class ViewportLineRenderManager:
 
         settings = cls.get_settings(space)
         if settings is None or not settings.enable:
-            return
-        tex = cls.get(space).tex_buffer.to_list()[0]
-        if tex is None:
             return
 
         region: bpy.types.Region = bpy.context.region

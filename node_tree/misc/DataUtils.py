@@ -16,7 +16,9 @@ def collection_element_type(data, property:str):
     return data.__class__.bl_rna.properties[property].fixed_type
 
 def collection_content_type(data, property:str):
-    return collection_element_type(data, property).bl_rna.properties["content"].fixed_type
+    for prop in collection_element_type(data, property).bl_rna.properties:
+        if prop.name == "content" and prop.type == "POINTER":
+            return prop.fixed_type
 
 
 
