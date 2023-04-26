@@ -34,10 +34,8 @@ from typing import Tuple
 import bpy
 import gpu
 import blf
-from struct import pack
 from enum import IntEnum
 from mathutils import Matrix
-from gpu_extras.batch import batch_for_shader
 from gpu_extras.presets import draw_texture_2d
 
 class ViewportLineRenderSettings(bpy.types.PropertyGroup):
@@ -326,27 +324,28 @@ class ViewportLineRenderManager:
                 first_interval=cls.__timeout2_interval)
 
         with gpu.matrix.push_pop():
-            gpu.matrix.load_matrix(Matrix.Identity(4))
-            gpu.matrix.load_projection_matrix(Matrix.Identity(4))
+            with gpu.matrix.push_pop_projection():
+                gpu.matrix.load_matrix(Matrix.Identity(4))
+                gpu.matrix.load_projection_matrix(Matrix.Identity(4))
 
-            width = region.width
-            height = region.height
-            draw_line = pixels is not None and len(pixels) == width * height * 4
+                width = region.width
+                height = region.height
+                draw_line = pixels is not None and len(pixels) == width * height * 4
 
-            if settings.enalbe_background_color:
-                tex = gpu.types.GPUTexture((8, 8))
-                color = list(settings.background_color)
-                if not draw_line:
-                    color[3] *= 0.3
-                tex.clear(format="FLOAT", value=color)
-                gpu.state.blend_set("ALPHA")
-                draw_texture_2d(tex, (-1, -1), 2, 2)
+                if settings.enalbe_background_color:
+                    tex = gpu.types.GPUTexture((8, 8))
+                    color = list(settings.background_color)
+                    if not draw_line:
+                        color[3] *= 0.3
+                    tex.clear(format="FLOAT", value=color)
+                    gpu.state.blend_set("ALPHA")
+                    draw_texture_2d(tex, (-1, -1), 2, 2)
 
-            if draw_line:
-                pixels = gpu.types.Buffer("FLOAT", width * height * 4, pixels)
-                tex = gpu.types.GPUTexture((width, height), data=pixels)
-                gpu.state.blend_set("ALPHA_PREMULT")
-                draw_texture_2d(tex, (-1, -1), 2, 2)
+                if draw_line:
+                    pixels = gpu.types.Buffer("FLOAT", width * height * 4, pixels)
+                    tex = gpu.types.GPUTexture((width, height), data=pixels)
+                    gpu.state.blend_set("ALPHA_PREMULT")
+                    draw_texture_2d(tex, (-1, -1), 2, 2)
 
 
     @classmethod
