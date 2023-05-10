@@ -4,9 +4,9 @@
 bl_info = {
     "name": "PSOFT Pencil+ 4 Line",
     "author": "P SOFTHOUSE",
-    "description": "High-quality lines in Blender [05a326ac]",
+    "description": "High-quality lines in Blender [b3c8074b]",
     "blender": (3, 0, 0),
-    "version": (4, 0, 1),
+    "version": (4, 0, 2),
     "location": "",
     "warning": "",
     "category": "Generic",
@@ -22,14 +22,12 @@ if "bpy" in locals():
     imp.reload(Translation)
     imp.reload(merge_helper)
     imp.reload(pencil4_viewport)
-    imp.reload(pencil4_viewport_compositor_override)
     imp.reload(pencil4_preferences)
 else:
     from . import pencil4_handler
     from . import pencil4_compositing
     from . import pencil4_render_images
     from . import pencil4_viewport
-    from . import pencil4_viewport_compositor_override
     from .node_tree import PencilLineMergeGroup
     from .i18n import Translation
     from .merge_helper import merge_helper
@@ -55,7 +53,6 @@ def register():
     pencil4_render_images.register_props()
     merge_helper.register_menu()
     pencil4_viewport.register_props()
-    pencil4_viewport_compositor_override.register()
 
     if not os.path.isfile(bpy.context.preferences.addons[__package__].preferences.render_app_path == ""):
         bpy.context.preferences.addons[__package__].preferences.render_app_path = ""
@@ -75,7 +72,6 @@ def register():
                     bpy.context.preferences.addons[__package__].preferences.render_app_path = data
 
 def unregister():
-    pencil4_viewport_compositor_override.unregister()
     pencil4_viewport.unregister_props()
     merge_helper.unregister_menu()
     pencil4_render_images.unregister_props()

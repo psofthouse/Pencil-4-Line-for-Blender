@@ -37,10 +37,18 @@ class PCL4_OT_AddImageNode(bpy.types.Operator):
         if image is None or image.name == "":
             return {'CANCELLED'}
 
-        bpy.ops.node.add_node(type="CompositorNodeImage",
-            use_transform=True,
-            settings=[{"name":"image", "value":f"bpy.data.images['{image.name}']"}])
+        bpy.ops.node.add_node(type="CompositorNodeImage", use_transform=True)
+        context.active_node.image = image
         return bpy.ops.node.translate_attach_remove_on_cancel('INVOKE_DEFAULT')
+
+    def invoke(self, context, event):
+        space = context.space_data
+        tree = space.edit_tree
+        if context.region.type == 'WINDOW':
+            space.cursor_location_from_region(event.mouse_region_x, event.mouse_region_y)
+        else:
+            space.cursor_location = tree.view_center
+        return self.execute(context)
 
 
 class PCL4_OT_DeleteLineRenderElement(bpy.types.Operator):

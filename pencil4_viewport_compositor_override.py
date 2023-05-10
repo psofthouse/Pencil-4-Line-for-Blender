@@ -14,7 +14,8 @@ class Manager:
 
     @classmethod
     def _draw(cls):
-        if getattr(bpy.context.space_data.shading, "use_compositor", "DISABLED") == "DISABLED":
+        use_compositor = getattr(bpy.context.space_data.shading, "use_compositor", "DISABLED")
+        if use_compositor == "DISABLED" or type(use_compositor) is bool:
             return
         depsgraph = bpy.context.evaluated_depsgraph_get()
         if depsgraph is None:
