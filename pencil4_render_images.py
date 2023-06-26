@@ -9,6 +9,8 @@ else:
 
 import sys
 import platform
+import os
+import re
 from typing import Tuple
 import bpy
 import itertools
@@ -55,6 +57,13 @@ class OutputImage(bpy.types.PropertyGroup):
         if self.main is not None and self.main.name != name and self.main.name != "" and not self.main.name.startswith(name + "."):
             self.main.name = name
 
+    def correct_duplicated_output_images(self, images: set):
+        if self.main is not None:
+            if self.main in images:
+                self.main = new_image("tmp")
+            else:
+                images.add(self.main)
+
 class RenderElement(bpy.types.PropertyGroup):
     output: bpy.props.PointerProperty(type=OutputImage)
 
@@ -79,10 +88,70 @@ class RenderElement(bpy.types.PropertyGroup):
     wireframe_on: bpy.props.BoolProperty(default=True)
     line_set_ids: bpy.props.BoolVectorProperty(size=8, default=[True, True, True, True, True, True, True, True])
 
+class VectorOutput(bpy.types.PropertyGroup):
+    file_type_items = (
+        ("AIEPS", "AI(EPS)", "Adobe Illustrator 8 EPS", 0),
+        ('EPS', "EPS", "Encapsulated Post Scrip", 1),
+        ('PLD', "PLD", "Pencil+ Line Data", 2),
+    )
+
+    def get_output_path(self):
+        for view_layer in itertools.chain.from_iterable(scene.view_layers for scene in bpy.data.scenes):
+            if not view_layer.pencil4_line_outputs.output.main:
+                continue
+            for vector_output in view_layer.pencil4_line_outputs.vector_outputs:
+                if vector_output == self:
+                    sub_path = self.sub_path
+                    placeholder_count = sub_path.count("#")
+                    if placeholder_count == 0:
+                        sub_path += str(bpy.context.scene.frame_current).zfill(4)
+                    else:
+                        sub_path = sub_path.replace("#" * placeholder_count, str(bpy.context.scene.frame_current).zfill(placeholder_count))
+
+                    # base_pathに"/tmp"が設定されている場合、正確な絶対パスを取得する方法が分からないので、Image経由で絶対パスを取得する                    
+                    image = view_layer.pencil4_line_outputs.output.main
+                    filepath_raw = image.filepath_raw
+                    image.filepath_raw = view_layer.pencil4_line_outputs.vector_output_base_path
+                    path = image.filepath_from_user()
+                    image.filepath_raw = filepath_raw
+
+                    path = os.path.join(path, sub_path)
+                    path += ".pld" if self.file_type == "PLD" else ".eps"
+                    return path
+        return ""
+
+    def update_sub_path(self, context):
+        if self.file_type == "PLD":
+            if not re.match("\\<(LineName|linename|LINENAME|Linename)\\>", self.sub_path):
+                self.sub_path += "_<LineName>"
+        else:
+            self.sub_path = re.sub("_{0,1}\\<(LineName|linename|LINENAME|Linename)\\>", "", self.sub_path)
+
+    output_path: bpy.props.StringProperty(get=get_output_path)
+
+    on: bpy.props.BoolProperty(default=True)
+    sub_path: bpy.props.StringProperty(default="Line", subtype="FILE_NAME")
+
+    file_type: bpy.props.EnumProperty(items=file_type_items, default="AIEPS", update=update_sub_path)
+    visible_lines_on: bpy.props.BoolProperty(default=True)
+    hidden_lines_on: bpy.props.BoolProperty(default=True)
+    outline_on: bpy.props.BoolProperty(default=True)
+    object_on: bpy.props.BoolProperty(default=True)
+    intersection_on: bpy.props.BoolProperty(default=True)
+    smoothing_on: bpy.props.BoolProperty(default=True)
+    material_id_on: bpy.props.BoolProperty(default=True)
+    selected_edges_on: bpy.props.BoolProperty(default=True)
+    normal_angle_on: bpy.props.BoolProperty(default=True)
+    wireframe_on: bpy.props.BoolProperty(default=True)
+    line_set_ids: bpy.props.BoolVectorProperty(size=8, default=[True, True, True, True, True, True, True, True])
+
 
 class ViewLayerLineOutputs(bpy.types.PropertyGroup):
     output: bpy.props.PointerProperty(type=OutputImage)
     render_elements: bpy.props.CollectionProperty(type=RenderElement)
+    vector_outputs: bpy.props.CollectionProperty(type=VectorOutput)
+    vector_output_selected_index: bpy.props.IntProperty(options={"HIDDEN", "SKIP_SAVE"})
+    vector_output_base_path: bpy.props.StringProperty(subtype="DIR_PATH")
 
     fix_output_after_load: bpy.props.BoolProperty(default=True)
 
@@ -98,7 +167,12 @@ class ViewLayerLineOutputs(bpy.types.PropertyGroup):
         self.output.rename(get_image_name(view_layer))
         for elem in self.render_elements:
             elem.output.rename(get_element_image_name_prefix(view_layer))
- 
+
+    def correct_duplicated_output_images(self, images: set):
+        self.output.correct_duplicated_output_images(images)
+        for elem in self.render_elements:
+            elem.output.correct_duplicated_output_images(images)
+
     @staticmethod
     def on_save_pre():
         ViewLayerLineOutputs.correct_image_names()
@@ -201,3 +275,36 @@ def enumerate_images_from_compositor_nodes(view_layer: bpy.types.ViewLayer) -> T
                 element_dict[image] = cpp_element
 
     return (main_image, element_dict)
+
+
+def enumerate_vector_outputs_from_compositor_nodes(view_layer: bpy.types.ViewLayer, create_folder: bool = False) -> list[cpp.vector_output]:
+    if bpy.context.scene.node_tree is not None:
+        for image in [node.image for node in bpy.context.scene.node_tree.nodes if node.type == "IMAGE" and node.image]:
+            if image == view_layer.pencil4_line_outputs.output.main:
+                outputs = []
+                for py_output in view_layer.pencil4_line_outputs.vector_outputs:
+                    if not py_output.on:
+                        continue
+                    cpp_output = cpp.vector_output()
+                    cpp_ulits.copy_props(py_output, cpp_output)
+
+                    dir = os.path.dirname(cpp_output.output_path)
+                    if create_folder:
+                        if not os.path.exists(dir):
+                            try:
+                                os.makedirs(dir)
+                            except Exception as e:
+                                continue
+                    if not os.access(dir, os.W_OK):
+                        continue
+                    
+                    outputs.append(cpp_output)
+                return outputs
+
+    return []
+
+
+def correct_duplicated_output_images(scene: bpy.types.Scene):
+    images = set()
+    for view_layer in scene.view_layers:
+        view_layer.pencil4_line_outputs.correct_duplicated_output_images(images)

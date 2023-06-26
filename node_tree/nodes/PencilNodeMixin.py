@@ -29,7 +29,7 @@ class PencilNodeMixin:
             if output.links:
                 return
 
-        child_nodes = [l.from_node for l in itertools.chain.from_iterable(input.links for input in self.inputs)]
+        child_nodes = set(l.from_node for l in itertools.chain.from_iterable(input.links for input in self.inputs))
         node_to_delete =  node_tree.nodes[self.name]
         node_tree.nodes.remove(node_to_delete)
         for child in child_nodes:

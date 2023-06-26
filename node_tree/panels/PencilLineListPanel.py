@@ -91,11 +91,25 @@ class PCL4_PT_PencilLineList(PCL4_PT_PencilLineList_mixin, bpy.types.Panel):
                 first_interval=0.0)
             return False
 
+        # ノードは存在するものの選択状態のライン/ラインセットが設定されていない場合、選択をリセットする
+        do_reset_selecttion = False
+        if tree is not None:
+            line_node = tree.get_selected_line()
+            if line_node is None:
+                if len(tree.enumerate_lines()) > 0:
+                    do_reset_selecttion = True
+            elif line_node.get_selected_lineset() is None and len(line_node.enumerate_input_nodes()) > 0:
+                do_reset_selecttion = True
+            if do_reset_selecttion:
+                bpy.app.timers.register(
+                    lambda: None if bpy.ops.pcl4.reset_node_selection(tree_ptr=str(tree.as_pointer())) else None,
+                    first_interval=0.0)
+
         # ラインリスト表示の選択とアクティブノードが異なる場合、ラインリスト表示選択の同期をタイマーにより実行する
-        if tree is not None and not tree.show_node_panel:
-            do_sync = False
+        if not do_reset_selecttion and tree is not None and not tree.show_node_panel:
             active_node = tree.nodes.active
             line_node = tree.get_selected_line()
+            do_sync = False
             if isinstance(active_node, LineNode):
                 do_sync = line_node != active_node
             elif isinstance(active_node, LineSetNode):
@@ -448,6 +462,41 @@ class PCL4_OT_SyncNodeSelection(bpy.types.Operator):
                         tree.set_selected_line(line_node) 
                         line_node.set_selected_lineset(active_node)
                         break
+
+        for screen in context.blend_data.screens:
+            for area in screen.areas:
+                for space in area.spaces:
+                    if getattr(space, "node_tree", None) == tree:
+                        area.tag_redraw()
+
+        return {"FINISHED"}
+    
+
+class PCL4_OT_ResetNodeSelection(bpy.types.Operator):
+    bl_idname = "pcl4.reset_node_selection"
+    bl_label = "Reset Node Selection"
+
+    tree_ptr: bpy.props.StringProperty(name='tree_ptr')
+
+    def execute(self, context):
+        tree_ptr = int(self.tree_ptr)
+        tree = next((x for x in bpy.data.node_groups if x.as_pointer() == tree_ptr), None)
+        if tree is None:
+            return {"CANCELLED"}
+
+        line_node = tree.get_selected_line()
+        if line_node is None:
+            lines = tree.enumerate_lines()
+            if len(lines) == 0:
+                return {"CANCELLED"}
+            line_node = lines[0]
+            tree.set_selected_line(line_node)
+
+        lineset_node = line_node.get_selected_lineset()
+        if lineset_node is None:
+            linesets = line_node.enumerate_input_nodes()
+            if len(linesets) > 0:
+                line_node.set_selected_lineset(linesets[0])
 
         for screen in context.blend_data.screens:
             for area in screen.areas:

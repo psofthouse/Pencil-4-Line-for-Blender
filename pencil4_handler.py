@@ -50,6 +50,7 @@ def on_pre_render(scene: bpy.types.Scene):
     if __session is None:
         __session = RenderSession()
         pencil4_viewport.ViewportLineRenderManager.in_render_session = True
+        pencil4_render_images.correct_duplicated_output_images(scene)
     else:
         __session.cleanup_frame()
 

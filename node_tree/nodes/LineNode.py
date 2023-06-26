@@ -22,6 +22,8 @@ class LineNode(bpy.types.Node, PencilNodeMixin):
         ('RELATIVE', "Relative (640*480)", "Relative", 1),
     )
 
+    node_name: bpy.props.StringProperty(get=lambda self: self.name)
+
     is_active: bpy.props.BoolProperty(default=True)
     render_priority: bpy.props.IntProperty(default=0, min=0, max=65535)
 

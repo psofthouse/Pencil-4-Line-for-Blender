@@ -27,11 +27,10 @@ from .node_tree.misc.DataUtils import line_object_types
 import bpy
 import itertools
 
-def ShowErrorMessage(message = ""):
-    def draw(self, context):
-        self.layout.label(text=message)
-    bpy.context.window_manager.popup_menu(draw, title = "Pencil+ 4 Line Render Error", icon = "ERROR")
-    print(f"Pencil+ 4 Line Render Error : {message}")
+
+def ShowRenderError(message = ""):
+    print( f"Pencil+ 4 Line Render Error : {message}")
+
 
 class Pencil4RenderSession:
     def __init__(self):
@@ -82,12 +81,12 @@ class Pencil4RenderSession:
                     pencil4_render_images.reset_image(i)
 
             if ret != pencil4line_for_blender.draw_ret.success:
-                bpy.app.timers.register(lambda: ShowErrorMessage(f"{ret}"), first_interval=0)
+                ShowRenderError(f"{ret}")
 
                 if bpy.context.preferences.addons[__package__].preferences.abort_rendering_if_error_occur:
                     import ctypes
                     ctypes.windll.user32.keybd_event(0x1B)
-                    bpy.app.timers.register(lambda: ShowErrorMessage("Rendering aborted."), first_interval=0)
+                    ShowRenderError("Rendering aborted.")
                 
             return ret
 
@@ -140,8 +139,16 @@ class Pencil4RenderSession:
         # 
         is_viewport = viewport_camera is not None
 
+        # Holdout設定
+        holdout_objects_from_collection = set()
+        check_holdout = depsgraph.scene.render.engine != "BLENDER_WORKBENCH"
+        if is_viewport and space and space.shading.type in ["WIREFRAME", "SOLID"]:
+            check_holdout = False
+        if check_holdout:
+            for object in itertools.chain.from_iterable([c.collection.objects for c in flatten_hierarchy(depsgraph.view_layer_eval.layer_collection) if c.holdout]):
+                holdout_objects_from_collection.add(object)
+
         # 描画用オブジェクトのインスタンスの生成
-        holdout_objects = set()
         render_instances = []
         ungrouped_objects = set()
         mesh_color_attributes = {}
@@ -197,12 +204,15 @@ class Pencil4RenderSession:
                 src_object = override_library.reference if override_library is not None else src_object
 
                 ungrouped_objects.add(src_object)
-                render_Instance = pencil4line_for_blender.interm_render_Instance(src_object, object_instance.matrix_world, mesh)
 
+                if check_holdout:
+                    holdout = obj.is_holdout
+                    if not holdout:
+                        holdout = (object_instance.parent if object_instance.parent is not None else obj) in holdout_objects_from_collection
+                else:
+                    holdout = False
+                render_Instance = pencil4line_for_blender.interm_render_Instance(src_object, object_instance.matrix_world, mesh, holdout)
                 render_instances.append(render_Instance)
-
-                if obj.is_holdout:
-                    holdout_objects.add(src_object)
 
                 if mesh_color_attributes is not None and mesh not in mesh_color_attributes:
                     attr = getattr(mesh, "color_attributes", None)
@@ -220,10 +230,15 @@ class Pencil4RenderSession:
             projection = scene_camera.calc_matrix_camera(depsgraph,
                                 scale_x= depsgraph.scene.render.pixel_aspect_x,
                                 scale_y= depsgraph.scene.render.pixel_aspect_y)
+            camera_matrix = scene_camera.matrix_world.transposed()
+            camera_matrix[0].xyz = camera_matrix[0].xyz.normalized()
+            camera_matrix[1].xyz = camera_matrix[1].xyz.normalized()
+            camera_matrix[2].xyz = camera_matrix[2].xyz.normalized()
+            camera_matrix.transpose()
             interm_camera = pencil4line_for_blender.interm_camera(scene_camera.data.clip_start,
                                 scene_camera.data.clip_end,
                                 get_line_size_relative_type(depsgraph),
-                                scene_camera.matrix_world,
+                                camera_matrix,
                                 projection)
 
         # 出力Imageのセットアップ
@@ -231,21 +246,6 @@ class Pencil4RenderSession:
         for i in element_dict.keys():
             pencil4_render_images.setup_image(i, width, height)
 
-        # Holdout設定
-        if depsgraph.scene.render.engine != "BLENDER_WORKBENCH":
-            for object in itertools.chain.from_iterable([c.collection.objects for c in flatten_hierarchy(depsgraph.view_layer.layer_collection) if c.holdout]):
-                holdout_objects.add(object)
-            
-            # Holdout対象のオブジェクトがある場合、何も描画を行わないダミーのラインセットを生成しオブジェクトを登録する
-            if len(holdout_objects) > 0:
-                line_set = pencil4line_for_blender.line_set_node()
-                line_set.objects = list(holdout_objects)
-
-                for line_node in line_nodes:
-                    line_sets = line_node.line_sets
-                    line_sets.insert(0, line_set)
-                    line_node.line_sets = line_sets
-        
         # グループ設定
         groups = []
         def collect_group(collection: bpy.types.Collection):
@@ -270,7 +270,9 @@ class Pencil4RenderSession:
             self.__interm_context.mesh_color_attributes_on = True
             self.__interm_context.mesh_color_attributes = [(mesh, attr) for mesh, attr in mesh_color_attributes.items() if len(attr) > 0]
 
-        task_name = f"Blender {bpy.app.version_string}"
+        self.__interm_context.platform = f"Blender {bpy.app.version_string}"
+
+        task_name = self.__interm_context.platform
         task_name += f" : {bpy.path.basename(bpy.data.filepath)}"
         if is_viewport:
             task_name += f" : viewport"
@@ -295,6 +297,7 @@ class Pencil4RenderSession:
                                         line_nodes,
                                         line_function_nodes,
                                         list(element_dict.values()),
+                                        pencil4_render_images.enumerate_vector_outputs_from_compositor_nodes(depsgraph.view_layer, True),
                                         groups)
     
     def get_draw_option(self, new_if_none:bool = False):

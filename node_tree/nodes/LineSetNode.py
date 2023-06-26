@@ -51,6 +51,8 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
             brush_settings.create_new_node(0, context.space_data.edit_tree)
         GuiUtils.update_view3d_area(context.screen)
 
+    node_name: bpy.props.StringProperty(get=lambda self: self.name)
+
     is_on: bpy.props.BoolProperty(default=True)
     lineset_id: bpy.props.IntProperty(default=1, min=1, max=8)
 
@@ -282,6 +284,11 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         default=H_ALPHA_REDUCTION_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(H_ALPHA_REDUCTION_SOCKET_ID),
         set=lambda self, val: None)
+
+    #
+    user_defined_color: bpy.props.FloatVectorProperty(
+        subtype="COLOR",
+        get=lambda self: self.color if self.use_custom_color else [0] * 3)
 
     def init(self, context):
         super().init()

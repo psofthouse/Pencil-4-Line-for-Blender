@@ -369,6 +369,18 @@ translation_dict = {
         (ctxt, "Output Line Set IDs"):
             "出力するラインセットID",
 
+        # Vector File Output
+        (ctxt, "Vector File Output"):
+            "ベクトルファイル出力",
+        (ctxt, "Base Path"):
+            "基本パス",
+        (ctxt, "Outputs"):
+            "出力",
+        (ctxt, "File Subpath"):
+            "ファイルサブパス",
+        (ctxt, "File Type"):
+            "ファイルタイプ",
+
         # Line Group
         (ctxt, "Pencil+ 4 Line Group"):
             "Pencil+ 4 ライン グループ",
