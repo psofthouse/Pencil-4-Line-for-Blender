@@ -4,9 +4,9 @@
 bl_info = {
     "name": "PSOFT Pencil+ 4 Line",
     "author": "P SOFTHOUSE",
-    "description": "High-quality lines in Blender [76722123]",
+    "description": "High-quality lines in Blender [aa4edcb2]",
     "blender": (3, 0, 0),
-    "version": (4, 0, 3),
+    "version": (4, 0, 4),
     "location": "",
     "warning": "",
     "category": "Generic",
@@ -43,6 +43,10 @@ from . import node_tree
 
 auto_load.init()
 
+def update_after_addon_loaded():
+    for tree in (t for t in bpy.data.node_groups if isinstance(t, node_tree.PencilNodeTree) and t.first_update):
+        tree.update()
+
 def register():
     bpy.app.translations.register(__name__, Translation.translation_dict)
     auto_load.register()
@@ -54,12 +58,12 @@ def register():
     merge_helper.register_menu()
     pencil4_viewport.register_props()
 
-    if not os.path.isfile(bpy.context.preferences.addons[__package__].preferences.render_app_path == ""):
+    if not os.path.isfile(bpy.context.preferences.addons[__package__].preferences.render_app_path):
         bpy.context.preferences.addons[__package__].preferences.render_app_path = ""
     if bpy.context.preferences.addons[__package__].preferences.render_app_path == "":
         data = None
         regtype = None
-        if platform.system() == "Windows":        
+        if platform.system() == "Windows":
             try:
                 import winreg
                 key = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER, r"SOFTWARE\PSOFT\Pencil+ 4 Render App")
@@ -70,6 +74,9 @@ def register():
             finally:
                 if data is not None and regtype == winreg.REG_SZ:
                     bpy.context.preferences.addons[__package__].preferences.render_app_path = data
+
+    if not bpy.app.background:
+        bpy.app.timers.register(update_after_addon_loaded, first_interval=0.0)
 
 def unregister():
     pencil4_viewport.unregister_props()
