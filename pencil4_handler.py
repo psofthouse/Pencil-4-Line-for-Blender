@@ -51,6 +51,7 @@ def on_pre_render(scene: bpy.types.Scene):
         __session = RenderSession()
         pencil4_viewport.ViewportLineRenderManager.in_render_session = True
         pencil4_render_images.correct_duplicated_output_images(scene)
+        pencil4_render_images.setup_images(scene)
     else:
         __session.cleanup_frame()
 
@@ -69,6 +70,7 @@ def on_render_complete(scene: bpy.types.Scene):
         __session.cleanup_all()
         __session = None
         pencil4_viewport.ViewportLineRenderManager.in_render_session = False
+        pencil4_render_images.unpack_images(scene)
 
 @persistent
 def on_post_frame_change(scene: bpy.types.Scene, depsgraph: bpy.types.Depsgraph):

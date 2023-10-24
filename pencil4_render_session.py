@@ -3,6 +3,7 @@
 
 import sys
 import platform
+from mathutils import Matrix
 
 if "bpy" in locals():
     import imp
@@ -28,9 +29,13 @@ import bpy
 import itertools
 
 
-def ShowRenderError(message = ""):
+def show_render_error(message = ""):
     print( f"Pencil+ 4 Line Render Error : {message}")
 
+def get_render_size(depsgraph: bpy.types.Depsgraph) -> tuple[int, int]:
+    width = depsgraph.scene.render.resolution_x * depsgraph.scene.render.resolution_percentage // 100
+    height = depsgraph.scene.render.resolution_y * depsgraph.scene.render.resolution_percentage // 100
+    return (width, height)
 
 class Pencil4RenderSession:
     def __init__(self):
@@ -61,18 +66,17 @@ class Pencil4RenderSession:
         if depsgraph.view_layer.name in self.__processed_view_layers:
             return pencil4line_for_blender.draw_ret.success
         self.__processed_view_layers.add(depsgraph.view_layer.name)
+        width, height = get_render_size(depsgraph)
 
         # コンポジットノードで使用されているPencil+ 4のImageを列挙する
         # Imageが何もなければ処理を抜ける
-        (image, element_dict) = pencil4_render_images.enumerate_images_from_compositor_nodes(depsgraph.view_layer)
+        (image, element_dict) = pencil4_render_images.enumerate_images_from_compositor_nodes(depsgraph.view_layer, (width, height))
         if image is None and len(element_dict) == 0:
             return pencil4line_for_blender.draw_ret.success
 
         # 描画
         ret = pencil4line_for_blender.draw_ret.error_unknown
         try:
-            width = depsgraph.scene.render.resolution_x * depsgraph.scene.render.resolution_percentage // 100
-            height = depsgraph.scene.render.resolution_y * depsgraph.scene.render.resolution_percentage // 100
             ret = self.__draw_line(depsgraph, width, height, image, element_dict, is_cycles = depsgraph.scene.render.engine == "CYCLES")
         finally:
             if ret != pencil4line_for_blender.draw_ret.success and ret != pencil4line_for_blender.draw_ret.success_without_license:
@@ -81,17 +85,18 @@ class Pencil4RenderSession:
                     pencil4_render_images.reset_image(i)
 
             if ret != pencil4line_for_blender.draw_ret.success:
-                ShowRenderError(f"{ret}")
+                show_render_error(ret)
 
                 if bpy.context.preferences.addons[__package__].preferences.abort_rendering_if_error_occur:
                     import ctypes
                     ctypes.windll.user32.keybd_event(0x1B)
-                    ShowRenderError("Rendering aborted.")
+                    show_render_error("Rendering aborted.")
                 
             return ret
 
 
-    def draw_line_for_viewport(self, depsgraph: bpy.types.Depsgraph, region: bpy.types.Region, space: bpy.types.SpaceView3D, region_3d: bpy.types.RegionView3D):
+    def draw_line_for_viewport(self, depsgraph: bpy.types.Depsgraph, width: int, height: int, space: bpy.types.SpaceView3D, region_3d: bpy.types.RegionView3D,
+                               matrix_override = None):
         if region_3d.view_perspective == "CAMERA" and space.camera is not None and space.camera.type == "CAMERA":
             camera: bpy.types.Camera = space.camera.data
             clip_start = camera.clip_start
@@ -103,15 +108,19 @@ class Pencil4RenderSession:
             clip_start = -3e38
             clip_end = 3e38
         draw_option = self.get_draw_option(new_if_none = False)
+        camera_matrix = region_3d.view_matrix.inverted()
+        window_matrix = region_3d.window_matrix
+        if matrix_override is not None:
+            camera_matrix, window_matrix = matrix_override(camera_matrix, window_matrix)
         interm_camera = pencil4line_for_blender.interm_camera(clip_start,
                             clip_end,
                             get_line_size_relative_type(depsgraph) if draw_option is not None and draw_option.linesize_relative_target_width > 0 else 0,
-                            region_3d.view_matrix.inverted(),
-                            region_3d.window_matrix)
-        return self.__draw_line(depsgraph, region.width, region.height, None, {},
-            viewport_camera = interm_camera,
-            space = space,
-            is_cycles = space.shading.type == "RENDERED" and depsgraph.scene.render.engine == "CYCLES")
+                            camera_matrix,
+                            window_matrix)
+        return self.__draw_line(depsgraph, width, height, None, dict(),
+                                viewport_camera = interm_camera,
+                                space = space,
+                                is_cycles = space.shading.type == "RENDERED" and depsgraph.scene.render.engine == "CYCLES")
 
 
     def get_viewport_image_buffer(self):
@@ -230,27 +239,20 @@ class Pencil4RenderSession:
             projection = scene_camera.calc_matrix_camera(depsgraph,
                                 scale_x= depsgraph.scene.render.pixel_aspect_x,
                                 scale_y= depsgraph.scene.render.pixel_aspect_y)
-            camera_matrix = scene_camera.matrix_world.transposed()
-            camera_matrix[0].xyz = camera_matrix[0].xyz.normalized()
-            camera_matrix[1].xyz = camera_matrix[1].xyz.normalized()
-            camera_matrix[2].xyz = camera_matrix[2].xyz.normalized()
-            camera_matrix.transpose()
             interm_camera = pencil4line_for_blender.interm_camera(scene_camera.data.clip_start,
                                 scene_camera.data.clip_end,
                                 get_line_size_relative_type(depsgraph),
-                                camera_matrix,
+                                get_camera_matrix(scene_camera),
                                 projection)
-
-        # 出力Imageのセットアップ
-        pencil4_render_images.setup_image(image, width, height)
-        for i in element_dict.keys():
-            pencil4_render_images.setup_image(i, width, height)
 
         # グループ設定
         groups = []
         def collect_group(collection: bpy.types.Collection):
             for child in collection.children:
                 collect_group(child)
+            for object in collection.objects:
+                if object.type == "EMPTY" and object.instance_type == "COLLECTION":
+                    collect_group(object.instance_collection)
             if collection.pcl4_line_merge_group:
                 objects = list(x for x in collection.all_objects if x in ungrouped_objects)
                 if len(objects) > 0:
@@ -313,6 +315,15 @@ def get_line_size_relative_type(depsgraph: bpy.types.Depsgraph) -> int:
     camera = depsgraph.scene_eval.camera
     return ["AUTO", "HORIZONTAL", "VERTICAL"].index(camera.data.sensor_fit) if camera is not None else 0
 
+
+def get_camera_matrix(camera: bpy.types.Object) -> Matrix:
+    camera_matrix = camera.matrix_world.transposed()
+    camera_matrix[0].xyz = camera_matrix[0].xyz.normalized()
+    camera_matrix[1].xyz = camera_matrix[1].xyz.normalized()
+    camera_matrix[2].xyz = camera_matrix[2].xyz.normalized()
+    camera_matrix.transpose()
+    return camera_matrix
+    
 
 def flatten_hierarchy(o):
     yield o

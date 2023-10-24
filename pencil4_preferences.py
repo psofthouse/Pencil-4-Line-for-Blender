@@ -22,7 +22,7 @@ class PCL4_Preferences(bpy.types.AddonPreferences):
         layout = self.layout
 
         layout.prop(self, "render_app_path", text="PSOFT Pencil+ 4 Render App Path", text_ctxt=Translation.ctxt)
-        layout.prop(self, "viewport_render_timeout", text="Viewport Rendering Timeout Period", text_ctxt=Translation.ctxt)
+        layout.prop(self, "viewport_render_timeout", text="Viewport Preview Timeout Period", text_ctxt=Translation.ctxt)
         layout.prop(self, "abort_rendering_if_error_occur", text="Abort Rendering when Errors Occur", text_ctxt=Translation.ctxt)
 
         layout.separator()
@@ -46,3 +46,17 @@ class PCL4_Preferences(bpy.types.AddonPreferences):
         col.label(text="2. Terminate all Blender processes.", text_ctxt=Translation.ctxt)
         col.separator()
         col.label(text="3. Delete all the items in the Pencil+ 4 Line add-on folder.", text_ctxt=Translation.ctxt)
+
+
+class PCL4_OT_ShowPreferences(bpy.types.Operator):
+    bl_idname = "pcl4.show_preferences"
+    bl_label = "Show Preferences"
+    bl_options = {'REGISTER'}
+    bl_translation_context = Translation.ctxt
+
+    def execute(self, context):
+        bpy.ops.screen.userpref_show("INVOKE_DEFAULT")
+        context.preferences.active_section  = "ADDONS"
+        bpy.ops.preferences.addon_expand(module = __package__)
+        bpy.ops.preferences.addon_show(module = __package__)
+        return {'FINISHED'}

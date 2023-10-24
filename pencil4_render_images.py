@@ -208,7 +208,7 @@ def unregister_props():
     del(bpy.types.ViewLayer.pencil4_line_outputs)
 
 def new_image(name:str) -> bpy.types.Image:
-    image = bpy.data.images.new(name, width=8, height=8, alpha=True)
+    image = bpy.data.images.new(name, width=8, height=8, alpha=True, float_buffer=True)
     image.generated_color = [0, 0, 0, 0]
     setup_image(image, width=image.size[0], height=image.size[1])
     return image
@@ -240,12 +240,37 @@ def setup_image(image: bpy.types.Image, width: int, height: int):
 
     if image.source != "GENERATED":
         image.source = "GENERATED"
-    if image.colorspace_settings.name != "Linear":
-        image.colorspace_settings.name = "Linear"
+    if not image.use_generated_float:
+        image.use_generated_float = True
+    colorspace = "Linear" if "Linear" in bpy.types.ColorManagedInputColorspaceSettings.bl_rna.properties["name"].enum_items else "Linear Rec.709"
+    if image.colorspace_settings.name != colorspace:
+        image.colorspace_settings.name = colorspace
     if image.alpha_mode != "PREMUL":
         image.alpha_mode = "PREMUL"
     if image.size[0] != width or image.size[1] != height:
         image.scale(image.size[0] if width <= 0 else width, image.size[1] if height <= 0 else height)
+
+
+def setup_images(scene: bpy.types.Scene):
+    width = scene.render.resolution_x * scene.render.resolution_percentage // 100
+    height = scene.render.resolution_y * scene.render.resolution_percentage // 100
+    for view_layer in scene.view_layers:
+        (image, element_dict) = enumerate_images_from_compositor_nodes(view_layer)
+        setup_image(image, width, height)
+        for i in element_dict.keys():
+            setup_image(i, width, height)
+
+
+def unpack_images(scene: bpy.types.Scene):
+    def unpack_image(image: bpy.types.Image):
+        if image is not None:
+            image.pack()
+            image.unpack(method='REMOVE')
+    for view_layer in scene.view_layers:
+        (image, element_dict) = enumerate_images_from_compositor_nodes(view_layer)
+        unpack_image(image)
+        for i in element_dict.keys():
+            unpack_image(i)
 
 
 def reset_image(image: bpy.types.Image):
@@ -259,12 +284,14 @@ def reset_image(image: bpy.types.Image):
         image.pixels = [0] * (image.size[0] * image.size[1] * 4)
 
 
-def enumerate_images_from_compositor_nodes(view_layer: bpy.types.ViewLayer) -> Tuple[bpy.types.Image, dict[bpy.types.Image, cpp.line_render_element]]:
+def enumerate_images_from_compositor_nodes(view_layer: bpy.types.ViewLayer, check_image_size: Tuple[int, int] = None) -> Tuple[bpy.types.Image, dict[bpy.types.Image, cpp.line_render_element]]:
     main_image = None
     element_dict = {}
 
     if bpy.context.scene.node_tree is not None:
         for image in [node.image for node in bpy.context.scene.node_tree.nodes if node.type == "IMAGE" and node.image]:
+            if check_image_size is not None and (image.size[0] != check_image_size[0] or image.size[1] != check_image_size[1]):
+                continue
             if image == view_layer.pencil4_line_outputs.output.main:
                 main_image = image
             elif view_layer.pencil4_line_outputs.contains_in_render_elements(image):

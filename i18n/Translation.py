@@ -390,18 +390,32 @@ translation_dict = {
             "ライン合成ヘルパー",
 
         # Viewport Rendering
-        (ctxt, "Viewport Rendering"):
-            "ビューポートレンダリング",
+        (ctxt, "Viewport Display"):
+            "ビューポート表示",
+        (ctxt, "Line Preview"):
+            "ライン プレビュー",
+        (ctxt, "Adjust Timeout Period"):
+            "タイムアウト時間の調整",
         (ctxt, "Camera View Option"):
             "カメラビュー オプション",
         (ctxt, "Line Size Adjustment"):
             "ラインサイズ調整",
+        (ctxt, "Viewport Render"):
+            "ビューポートレンダー",
+        (ctxt, "Render Image"):
+            "画像をレンダリング",
+        (ctxt, "Render Animation"):
+            "アニメーションをレンダリング",
+        (ctxt, "Render Keyframes"):
+            "キーフレームをレンダリング",
 
         # Preferences
+        (ctxt, "Show Preferences"):
+            "プリファレンスを表示",
         (ctxt, "PSOFT Pencil+ 4 Render App Path"):
             "PSOFT Pencil+ 4 Render App パス",
-        (ctxt, "Viewport Rendering Timeout Period"):
-            "ビューポートレンダリングのタイムアウト時間",
+        (ctxt, "Viewport Preview Timeout Period"):
+            "ビューポートプレビューのタイムアウト時間",
         (ctxt, "Abort Rendering when Errors Occur"):
             "エラー発生時にレンダリングを中断する",
 
