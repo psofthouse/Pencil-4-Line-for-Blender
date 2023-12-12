@@ -6,6 +6,7 @@ import itertools
 from ..misc import PencilCurves
 from ...i18n import Translation
 from ..misc import GuiUtils
+from ..misc import AttrOverride
 
 class PencilNodeMixin:
     target_node_tree_type: str
@@ -93,10 +94,10 @@ class PencilNodeMixin:
         self.auto_create_node_and_return_when_property_on(context, socket_identifier)
         GuiUtils.update_view3d_area(context.screen)
 
-    def filtered_socket_id(self, id):
-        return id if getattr(self, id + "_on", True) and\
-                     getattr(self, id + "_amount", 1.0) > 0 and\
-                     getattr(self, id + "_opacity", 1.0) > 0 else ""
+    def filtered_socket_id(self, id, context=None, depsgraph=None):
+        return id if AttrOverride.get_overrided_attr(self, id + "_on", default=True, context=context, depsgraph=depsgraph) and\
+                     AttrOverride.get_overrided_attr(self, id + "_amount", default=1.0, context=context, depsgraph=depsgraph) > 0 and\
+                     AttrOverride.get_overrided_attr(self, id + "_opacity", default=1.0, context=context, depsgraph=depsgraph) > 0 else ""
 
     def tree_from_node(self):
         for tree in (x for x in bpy.data.node_groups if x.bl_idname == self.target_node_tree_type):
@@ -129,6 +130,9 @@ class PencilNodeMixin:
         tree = self.tree_from_node()
         return PencilCurves.evaluate_curve(
             tree.curve_node_tree if tree is not None else None, curve_name, length)
+
+    def get_overrided_attr(self, prop_name, default=None, context=None, depsgraph=None) -> any:
+        return AttrOverride.get_overrided_attr(self, prop_name, default=default, context=context, depsgraph=depsgraph)
 
     def migrate(self):
         pass

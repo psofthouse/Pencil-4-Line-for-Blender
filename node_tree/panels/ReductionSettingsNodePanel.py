@@ -5,6 +5,7 @@ import bpy
 
 from ..nodes.ReductionSettingsNode import ReductionSettingsNode
 from ..PencilNodeTree import PencilNodeTree
+from ..misc.GuiUtils import layout_prop
 from ...i18n import Translation
 
 class PCL4_PT_reduction_settings(bpy.types.Panel):
@@ -25,15 +26,15 @@ class PCL4_PT_reduction_settings(bpy.types.Panel):
         node = context.active_node
 
         row = layout.row(align=True)
-        row.prop(node, "reduction_start", text="Start", text_ctxt=Translation.ctxt)
-        row.prop(node, "reduction_end", text="End", text_ctxt=Translation.ctxt)
+        layout_prop(context, row, node, "reduction_start", text="Start", text_ctxt=Translation.ctxt)
+        layout_prop(context, row, node, "reduction_end", text="End", text_ctxt=Translation.ctxt)
 
         layout.separator()
         row = layout.row(align=True)
-        row.prop(node, "refer_object_on", text="Refer Object", text_ctxt=Translation.ctxt)
+        layout_prop(context, row, node, "refer_object_on", text="Refer Object", text_ctxt=Translation.ctxt)
         col = row.column()
         col.enabled = node.refer_object_on
-        col.prop(node, "object_reference", text="", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "object_reference", text="", text_ctxt=Translation.ctxt)
 
         layout.separator()
 

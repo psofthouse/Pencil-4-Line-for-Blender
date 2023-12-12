@@ -9,6 +9,7 @@ from .PencilNodeMixin import PencilNodeMixin
 from .PencilNodeSockets import *
 from ..misc.DataUtils import *
 from ..misc import GuiUtils
+from ..misc import AttrOverride
 from ...i18n import Translation
 
 V_BRUSH_SOCKET_ID = "v_brush"
@@ -81,7 +82,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, V_OUTLINE_SOCKET_ID))
     v_outline_brush_settings: bpy.props.StringProperty(
         default=V_OUTLINE_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(V_OUTLINE_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(V_OUTLINE_SOCKET_ID),
         set=lambda self, val: None)
 
     # v object
@@ -92,7 +93,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, V_OBJECT_SOCKET_ID))
     v_object_brush_settings: bpy.props.StringProperty(
         default=V_OBJECT_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(V_OBJECT_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(V_OBJECT_SOCKET_ID),
         set=lambda self, val: None)
 
     # v intersection
@@ -103,7 +104,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, V_INTERSECTION_SOCKET_ID))
     v_intersection_brush_settings: bpy.props.StringProperty(
         default=V_INTERSECTION_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(V_INTERSECTION_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(V_INTERSECTION_SOCKET_ID),
         set=lambda self, val: None)
 
     # v smooth
@@ -113,7 +114,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, V_SMOOTH_SOCKET_ID))
     v_smooth_brush_settings: bpy.props.StringProperty(
         default=V_SMOOTH_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(V_SMOOTH_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(V_SMOOTH_SOCKET_ID),
         set=lambda self, val: None)
 
     # v material
@@ -123,7 +124,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, V_MATERIAL_SOCKET_ID))
     v_material_brush_settings: bpy.props.StringProperty(
         default=V_MATERIAL_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(V_MATERIAL_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(V_MATERIAL_SOCKET_ID),
         set=lambda self, val: None)
 
     # v selected
@@ -133,7 +134,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, V_SELECTED_SOCKET_ID))
     v_selected_brush_settings: bpy.props.StringProperty(
         default=V_SELECTED_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(V_SELECTED_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(V_SELECTED_SOCKET_ID),
         set=lambda self, val: None)
 
     # v normal angle
@@ -143,7 +144,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, V_NORMAL_SOCKET_ID))
     v_normal_angle_brush_settings: bpy.props.StringProperty(
         default=V_NORMAL_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(V_NORMAL_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(V_NORMAL_SOCKET_ID),
         set=lambda self, val: None)
     v_normal_angle_min: bpy.props.FloatProperty(default=0.25 * math.pi, min=0.0, max=math.pi, subtype="ANGLE")
     v_normal_angle_max: bpy.props.FloatProperty(default=math.pi, min=0.0, max=math.pi, subtype="ANGLE")
@@ -155,7 +156,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, V_WIREFRAME_SOCKET_ID))
     v_wireframe_brush_settings: bpy.props.StringProperty(
         default=V_WIREFRAME_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(V_WIREFRAME_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(V_WIREFRAME_SOCKET_ID),
         set=lambda self, val: None)
 
     # v size reduction
@@ -190,7 +191,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, H_OUTLINE_SOCKET_ID))
     h_outline_brush_settings: bpy.props.StringProperty(
         default=H_OUTLINE_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(H_OUTLINE_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(H_OUTLINE_SOCKET_ID),
         set=lambda self, val: None)
 
     # h object
@@ -201,7 +202,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, H_OBJECT_SOCKET_ID))
     h_object_brush_settings: bpy.props.StringProperty(
         default=H_OBJECT_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(H_OBJECT_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(H_OBJECT_SOCKET_ID),
         set=lambda self, val: None)
 
     # h intersection
@@ -212,7 +213,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, H_INTERSECTION_SOCKET_ID))
     h_intersection_brush_settings: bpy.props.StringProperty(
         default=H_INTERSECTION_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(H_INTERSECTION_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(H_INTERSECTION_SOCKET_ID),
         set=lambda self, val: None)
 
     # h smooth
@@ -222,7 +223,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, H_SMOOTH_SOCKET_ID))
     h_smooth_brush_settings: bpy.props.StringProperty(
         default=H_SMOOTH_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(H_SMOOTH_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(H_SMOOTH_SOCKET_ID),
         set=lambda self, val: None)
 
     # h material
@@ -232,7 +233,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, H_MATERIAL_SOCKET_ID))
     h_material_brush_settings: bpy.props.StringProperty(
         default=H_MATERIAL_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(H_MATERIAL_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(H_MATERIAL_SOCKET_ID),
         set=lambda self, val: None)
 
     # h selected
@@ -242,7 +243,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, H_SELECTED_SOCKET_ID))
     h_selected_brush_settings: bpy.props.StringProperty(
         default=H_SELECTED_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(H_SELECTED_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(H_SELECTED_SOCKET_ID),
         set=lambda self, val: None)
 
     # h normal angle
@@ -252,7 +253,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, H_NORMAL_SOCKET_ID))
     h_normal_angle_brush_settings: bpy.props.StringProperty(
         default=H_NORMAL_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(H_NORMAL_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(H_NORMAL_SOCKET_ID),
         set=lambda self, val: None)
     h_normal_angle_min: bpy.props.FloatProperty(default=0.25 * math.pi, min=0.0, max=math.pi, subtype="ANGLE")
     h_normal_angle_max: bpy.props.FloatProperty(default=math.pi, min=0.0, max=math.pi, subtype="ANGLE")
@@ -264,7 +265,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         update=lambda self, ctx: self.specific_on_changed(ctx, H_WIREFRAME_SOCKET_ID))
     h_wireframe_brush_settings: bpy.props.StringProperty(
         default=H_WIREFRAME_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id_for_specific(H_WIREFRAME_SOCKET_ID),
+        get=lambda self: self.filtered_socket_id(H_WIREFRAME_SOCKET_ID),
         set=lambda self, val: None)
 
     # h size reduction
@@ -325,20 +326,20 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
                 input.hide = True
 
     def draw_buttons(self, context, layout):
-        layout.prop(self, "is_on", text="On")
+        GuiUtils.layout_prop(context, layout.row(), self, "is_on", text="On")
 
     def draw_buttons_ext(self, context, layout):
         return
 
     def draw_socket(self, socket, context, layout, text):
-        layout.enabled = self.is_on
+        layout.enabled = AttrOverride.get_overrided_attr(self, "is_on", context=context)
         if socket.is_output:
             # to Line Node
             layout.label(text=socket.name, text_ctxt=Translation.ctxt)
         else:
             # from Brush Settings Node
             if socket.identifier.endswith("specific") or socket.identifier.endswith("reduction"):
-                layout.prop(self, socket.identifier + "_on_gui", text="")
+                GuiUtils.layout_prop(context, layout, self, socket.identifier + "_on_gui", text="")
             layout.label(text=socket.name, text_ctxt=Translation.ctxt)
 
     def update(self):
@@ -349,8 +350,10 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         #     new_obj = self.objects.add()
         #     new_obj.obj = obj
 
-    def filtered_socket_id_for_specific(self, id):
-        return self.filtered_socket_id(id) if getattr(self, id.removesuffix("_specific") + "_on", True) else ""
+    def filtered_socket_id(self, id, context=None, depsgraph=None):
+        if id.endswith("_specific") and not getattr(self, id.removesuffix("_specific") + "_on", True):
+            return ""
+        return super().filtered_socket_id(id, context=context, depsgraph=depsgraph)
 
     def calc_new_node_position(self, socket_index: int):
         ret = super().calc_new_node_position(socket_index)

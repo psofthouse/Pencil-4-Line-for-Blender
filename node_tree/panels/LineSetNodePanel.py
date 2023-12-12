@@ -7,6 +7,8 @@ import itertools
 from ..nodes.LineSetNode import LineSetNode
 from . import BrushSettingsNodePanel
 from ..misc import GuiUtils
+from ..misc.GuiUtils import layout_prop
+from ..misc.AttrOverride import get_overrided_attr
 from ..misc import DataUtils
 from ..PencilNodeTree import PencilNodeTree
 from ...i18n import Translation
@@ -36,7 +38,7 @@ class PCL4_PT_lineset_mixin:
 
     @classmethod
     def lineset_enabled(cls, context):
-        return cls.lineset_node(context).is_on
+        return get_overrided_attr(cls.lineset_node(context), "is_on", context=context, default=False)
 
 
 class PCL4_PT_lineset_base(PCL4_PT_lineset_mixin):
@@ -57,12 +59,12 @@ class PCL4_PT_lineset_base(PCL4_PT_lineset_mixin):
         node = self.lineset_node(context)
 
         split = layout.split(factor=0.5)
-        split.prop(node, "is_on", text=node.name, translate=False, text_ctxt=Translation.ctxt)
+        layout_prop(context, split, node, "is_on", text=node.name, translate=False, text_ctxt=Translation.ctxt)
 
         split = split.split(factor=1.0)
         row = split.row()
         row.alignment = "RIGHT"
-        row.prop(node, "lineset_id", text="Line Set ID", text_ctxt=Translation.ctxt)
+        layout_prop(context, row, node, "lineset_id", text="Line Set ID", text_ctxt=Translation.ctxt)
         row.label(text=" ", text_ctxt=Translation.ctxt)
         row.enabled = self.lineset_enabled(context)
 
@@ -198,23 +200,24 @@ class PCL4_PT_lineset_edge_base(PCL4_PT_lineset_mixin):
         prefix = "v_" if tree.show_visible_lines else "h_"
 
         def prop(prop_name, label_text):
-            box_col.prop(node, prefix + prop_name, text=label_text, text_ctxt=Translation.ctxt)
+            layout_prop(context, box_col, node, prefix + prop_name, text=label_text, text_ctxt=Translation.ctxt)
         
         for d in __class__.__prop_def:
             on_prop = prefix + d[0][0] + "_on"
-            col.prop(node, on_prop, text=d[0][1], text_ctxt=Translation.ctxt)
+            layout_prop(context, col, node, on_prop, text=d[0][1], text_ctxt=Translation.ctxt)
             box_col = GuiUtils.indented_box_column(col, algin=True)
-            box_col.enabled = getattr(node, on_prop, False)
+            box_col.enabled = get_overrided_attr(node, on_prop, context=context, default=False)
             for param in d[1]:
                 prop(param[0], param[1])
 
             row = box_col.row()
             s_on_prop = prefix + d[0][0] + "_specific_on_gui"
-            row.prop(node, s_on_prop, text="Specific Brush Settings", text_ctxt=Translation.ctxt)
+            layout_prop(context, row, node, s_on_prop, text="Specific Brush Settings", text_ctxt=Translation.ctxt,
+                        preserve_icon_space=True, preserve_icon_space_emboss=False)
 
             specific_node = node.find_connected_from_node(prefix + d[0][0] + "_specific")
             row = row.row()
-            row.enabled = getattr(node, s_on_prop, False)
+            row.enabled = get_overrided_attr(node, s_on_prop, context=context, default=False)
             button = row.operator("pcl4.activate_node",
                 text=specific_node.name if specific_node is not None else "None",
                 icon= "TRACKING" if specific_node is not None else "NONE")
@@ -222,7 +225,7 @@ class PCL4_PT_lineset_edge_base(PCL4_PT_lineset_mixin):
             button.preferred_parent_node.set(node)
 
         def prop(prop_name, label_text):
-            col.prop(node, prop_name, text=label_text, text_ctxt=Translation.ctxt)
+            layout_prop(context, col, node, prop_name, text=label_text, text_ctxt=Translation.ctxt)
 
         col.separator(factor=3.0)
         prop("is_weld_edges", "Weld Edges Between Objects")
@@ -263,11 +266,12 @@ class PCL4_PT_lineset_reduction_base(PCL4_PT_lineset_mixin):
         for d in __class__.__prop_def:
             row = col.row()
             on_prop = prefix + d[0] + "_on_gui"
-            row.prop(node, on_prop, text=d[1], text_ctxt=Translation.ctxt)
+            layout_prop(context, row, node, on_prop, text=d[1], text_ctxt=Translation.ctxt,
+                        preserve_icon_space=True, preserve_icon_space_emboss=False)
 
             target_node = node.find_connected_from_node(prefix + d[0])
             row = row.row()
-            row.enabled = getattr(node, on_prop, False)
+            row.enabled = get_overrided_attr(node, on_prop, context=context, default=False)
             button = row.operator("pcl4.activate_node",
                 text=target_node.name if target_node is not None else "None",
                 icon= "TRACKING" if target_node is not None else "NONE")

@@ -5,6 +5,7 @@ import bpy
 
 from .PencilNodeMixin import PencilNodeMixin
 from .PencilNodeSockets import *
+from ..misc import GuiUtils
 from ...i18n import Translation
 
 BRUSH_DETAIL_SOCKET_ID = "brush_detail"
@@ -71,7 +72,7 @@ class BrushSettingsNode(bpy.types.Node, PencilNodeMixin):
 
     def draw_socket(self, socket, context, layout, text):
         if socket.identifier in (COLOR_MAP_SOCKET_ID, SIZE_MAP_SOCKET_ID):
-            layout.prop(self, socket.identifier + "_on_gui", text="")
+            GuiUtils.layout_prop(context, layout, self, socket.identifier + "_on_gui", text="")
         layout.label(text=socket.name, text_ctxt=Translation.ctxt)
 
     def calc_new_node_position(self, socket_index: int):

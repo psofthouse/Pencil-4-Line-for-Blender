@@ -7,6 +7,7 @@ import bpy
 from .PencilNodeMixin import PencilNodeMixin
 from .PencilNodeSockets import *
 from ..misc.PencilCurves import *
+from ..misc import GuiUtils
 from ...i18n import Translation
 
 BRUSH_MAP_SOCKET_ID = "brush_map"
@@ -57,7 +58,7 @@ class BrushDetailNode(bpy.types.Node, PencilNodeMixin):
     # brush_map
     brush_map: bpy.props.StringProperty(
         default=BRUSH_MAP_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id(BRUSH_MAP_SOCKET_ID) if self.brush_type != "SIMPLE" else "",
+        get=lambda self: self.filtered_socket_id(BRUSH_MAP_SOCKET_ID),
         set=lambda self, val: None)
     brush_map_opacity: bpy.props.FloatProperty(default=1.0, min=0.0, max=1.0)
     stretch: bpy.props.FloatProperty(default=0.0, min=-1.0, max=1.0)
@@ -113,7 +114,7 @@ class BrushDetailNode(bpy.types.Node, PencilNodeMixin):
     # distortion map
     distortion_map: bpy.props.StringProperty(
         default=DISTORTION_MAP_SOCKET_ID,
-        get=lambda self: self.filtered_socket_id(DISTORTION_MAP_SOCKET_ID) if self.distortion_enabled else "",
+        get=lambda self: self.filtered_socket_id(DISTORTION_MAP_SOCKET_ID),
         set=lambda self, val: None)
     distortion_map_amount: bpy.props.FloatProperty(default=5.0, min=0.0, max=1000.0, subtype="PIXEL")
     distortion_amount: bpy.props.FloatProperty(default=5.0, min=0.0, max=1000.0, subtype="PIXEL")
@@ -156,5 +157,11 @@ class BrushDetailNode(bpy.types.Node, PencilNodeMixin):
 
     def draw_socket(self, socket, context, layout, text):
         if socket.identifier in [BRUSH_MAP_SOCKET_ID, DISTORTION_MAP_SOCKET_ID]:
-            layout.prop(self, socket.identifier + "_on_gui", text="")
+            GuiUtils.layout_prop(context, layout, self, socket.identifier + "_on_gui", text="")
         layout.label(text=socket.name, text_ctxt=Translation.ctxt)
+
+    def filtered_socket_id(self, id, context=None, depsgraph=None):
+        if (id == BRUSH_MAP_SOCKET_ID and self.brush_type == "SIMPLE") or\
+            (id == DISTORTION_MAP_SOCKET_ID and not self.distortion_enabled):
+            return ""
+        return super().filtered_socket_id(id, context=context, depsgraph=depsgraph)

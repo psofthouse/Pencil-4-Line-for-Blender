@@ -11,8 +11,12 @@ from . import LineNodePanel
 from ..misc.NamedRNAStruct import NamedRNAStruct
 from ...i18n import Translation
 from ..nodes.PencilNodeMixin import PencilNodeMixin
+from ..misc.GuiUtils import layout_prop
+from ..misc import AttrOverride
 
 class PCL4_UL_LineListView(bpy.types.UIList):
+    has_ovveride: bpy.props.BoolProperty(default=False)
+
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row(align=True)
         row2 = row.row()
@@ -20,7 +24,7 @@ class PCL4_UL_LineListView(bpy.types.UIList):
         row2.label(text=" ")
         row2 = row.row()
         row2.alignment = "CENTER"
-        row2.prop(item, "is_active", text="")
+        layout_prop(context, row2, item, "is_active", preserve_icon_space=self.has_ovveride, preserve_icon_space_emboss=False, text="")
         row.prop(item, "name", text="", emboss=False, translate=False)
 
     def draw_filter(self, context, layout):
@@ -30,6 +34,7 @@ class PCL4_UL_LineListView(bpy.types.UIList):
         nodes = getattr(data, propname)
         lines = PencilNodeTree.tree_from_context(context).enumerate_lines()
 
+        self.has_ovveride = False
         flt_flags = []
         flt_neworder = []
         another_node_index = len(lines)
@@ -38,6 +43,7 @@ class PCL4_UL_LineListView(bpy.types.UIList):
             if isinstance(node, LineNode):
                 flt_flags.append(self.bitflag_filter_item)
                 flt_neworder.append(lines.index(node))
+                self.has_ovveride |= AttrOverride.is_overrided(node, "is_active", context)
             else:
                 flt_flags.append(0)
                 flt_neworder.append(another_node_index)

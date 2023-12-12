@@ -265,7 +265,8 @@ def unpack_images(scene: bpy.types.Scene):
     def unpack_image(image: bpy.types.Image):
         if image is not None:
             image.pack()
-            image.unpack(method='REMOVE')
+            if image.packed_file is not None:
+                image.unpack(method='REMOVE')
     for view_layer in scene.view_layers:
         (image, element_dict) = enumerate_images_from_compositor_nodes(view_layer)
         unpack_image(image)

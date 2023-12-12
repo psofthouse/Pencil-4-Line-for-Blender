@@ -5,6 +5,7 @@ import bpy
 
 from ..nodes.TextureMapNode import TextureMapNode
 from ..PencilNodeTree import PencilNodeTree
+from ..misc.GuiUtils import layout_prop
 from ...i18n import Translation
 
 
@@ -55,32 +56,32 @@ class PCL4_PT_texture_map_image_uv(PCL4_PT_brush_detail_mixin, bpy.types.Panel):
         col.template_ID(node, "image", new="image.new", open="image.open")
 
         col = layout.column(align=True)
-        col.prop(node, "wrap_mode_u", text="Wrap Mode U", text_ctxt=Translation.ctxt)
-        col.prop(node, "wrap_mode_v", text="V", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "wrap_mode_u", text="Wrap Mode U", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "wrap_mode_v", text="V", text_ctxt=Translation.ctxt)
 
         col = layout.column(align=True)
-        col.prop(node, "filter_mode", text="Filter Mode", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "filter_mode", text="Filter Mode", text_ctxt=Translation.ctxt)
 
         col = layout.column(align=True)
-        col.prop(node, "uv_source", text="UV Source", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "uv_source", text="UV Source", text_ctxt=Translation.ctxt)
 
         row = col.row()
         row.enabled = node.uv_source == "OBJECTUV"
-        row.prop(node, "uv_selection_mode", text="Selection Mode", text_ctxt=Translation.ctxt)
+        layout_prop(context, row, node, "uv_selection_mode", text="Selection Mode", text_ctxt=Translation.ctxt)
         row = col.row()
         row.enabled = node.uv_source == "OBJECTUV" and node.uv_selection_mode == "INDEX"
-        row.prop(node, "uv_index", text="Index", text_ctxt=Translation.ctxt)
+        layout_prop(context, row, node, "uv_index", text="Index", text_ctxt=Translation.ctxt)
         row = col.row()
         row.enabled = node.uv_source == "OBJECTUV" and node.uv_selection_mode == "NAME"
-        row.prop(node, "uv_name", text="Name", text_ctxt=Translation.ctxt)
+        layout_prop(context, row, node, "uv_name", text="Name", text_ctxt=Translation.ctxt)
 
         col = layout.column(align=True)
-        col.prop(node, "tiling", index=0, text="Tiling U", text_ctxt=Translation.ctxt)
-        col.prop(node, "tiling", index=1, text="V", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "tiling", index=0, text="Tiling U", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "tiling", index=1, text="V", text_ctxt=Translation.ctxt)
 
         col = layout.column(align=True)
-        col.prop(node, "offset", index=0, text="Offset U", text_ctxt=Translation.ctxt)
-        col.prop(node, "offset", index=1, text="V", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "offset", index=0, text="Offset U", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "offset", index=1, text="V", text_ctxt=Translation.ctxt)
 
 
 class PCL4_PT_texture_map_object_color(PCL4_PT_brush_detail_mixin, bpy.types.Panel):
@@ -100,10 +101,10 @@ class PCL4_PT_texture_map_object_color(PCL4_PT_brush_detail_mixin, bpy.types.Pan
         node = context.active_node
 
         col = layout.column(align=True)
-        col.prop(node, "object_color_selection_mode", text="Selection Mode", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "object_color_selection_mode", text="Selection Mode", text_ctxt=Translation.ctxt)
         row = col.row()
         row.enabled = node.object_color_selection_mode == "INDEX"
-        row.prop(node, "object_color_index", text="Index", text_ctxt=Translation.ctxt)
+        layout_prop(context, row, node, "object_color_index", text="Index", text_ctxt=Translation.ctxt)
         row = col.row()
         row.enabled = node.object_color_selection_mode == "NAME"
-        row.prop(node, "object_color_name", text="Name", text_ctxt=Translation.ctxt)
+        layout_prop(context, row, node, "object_color_name", text="Name", text_ctxt=Translation.ctxt)

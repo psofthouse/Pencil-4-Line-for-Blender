@@ -69,8 +69,8 @@ def on_render_complete(scene: bpy.types.Scene):
     if __session is not None:
         __session.cleanup_all()
         __session = None
-        pencil4_viewport.ViewportLineRenderManager.in_render_session = False
         pencil4_render_images.unpack_images(scene)
+        pencil4_viewport.ViewportLineRenderManager.in_render_session = False
 
 @persistent
 def on_post_frame_change(scene: bpy.types.Scene, depsgraph: bpy.types.Depsgraph):

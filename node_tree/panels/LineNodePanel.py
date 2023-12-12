@@ -12,6 +12,8 @@ from . import LineSetNodePanel
 from ..PencilNodeTree import PencilNodeTree
 from ..nodes.LineSetNode import V_BRUSH_SOCKET_ID
 from ..nodes.LineSetNode import H_BRUSH_SOCKET_ID
+from ..misc.GuiUtils import layout_prop
+from ..misc.AttrOverride import get_overrided_attr
 from ...i18n import Translation
 
 
@@ -20,7 +22,7 @@ class PCL4_UL_LineSetsListView(bpy.types.UIList):
         node = item.get_connected_node()
         row = layout.row(align=True)
         if node is not None:
-            row.prop(node, "name", text="", emboss=False, translate=False)
+            layout_prop(context, row, node, "name", text="", emboss=False, translate=False)
         else:
             row.label(text="None", translate=True, text_ctxt=Translation.ctxt)
 
@@ -178,7 +180,7 @@ class PCL4_PT_line_mixin:
 
     @classmethod
     def line_enabled(cls, context):
-        return cls.line_node(context).is_active
+        return get_overrided_attr(cls.line_node(context), "is_active", context=context, default=False)
 
     @classmethod
     def lineset_enabled(cls, context):
@@ -202,12 +204,12 @@ class PCL4_PT_line_base(PCL4_PT_line_mixin):
         node = self.line_node(context)
 
         split = layout.split(factor=0.5)
-        split.prop(node, "is_active", text=node.name, translate=False, text_ctxt=Translation.ctxt)
+        layout_prop(context, split, node, "is_active", text=node.name, translate=False, text_ctxt=Translation.ctxt)
 
         split = split.split(factor=1.0)
         row = split.row()
         row.alignment = "RIGHT"
-        row.prop(node, "render_priority", text="Render Priority", text_ctxt=Translation.ctxt)
+        layout_prop(context, row, node, "render_priority", text="Render Priority", text_ctxt=Translation.ctxt)
         row.label(text=" ", text_ctxt=Translation.ctxt)
 
     def draw(self, context):
@@ -266,14 +268,14 @@ class PCL4_PT_line_base(PCL4_PT_line_mixin):
         #
         col.separator(factor=2.0)
         row = col.row()
-        row.prop(node, "line_size_type", text="Line Size", expand=True, text_ctxt=Translation.ctxt)
+        layout_prop(context, row, node, "line_size_type", text="Line Size", expand=True, text_ctxt=Translation.ctxt)
 
         col.separator()
-        col.prop(node, "is_output_to_render_elements_only", text="Output to Render Elements Only", text_ctxt=Translation.ctxt)
-        col.prop(node, "over_sampling", text="Over Sampling", text_ctxt=Translation.ctxt)
-        col.prop(node, "antialiasing", text="Antialiasing", slider=True, text_ctxt=Translation.ctxt)
-        col.prop(node, "off_screen_distance", text="Offscreen Distance", text_ctxt=Translation.ctxt)
-        col.prop(node, "random_seed", text="Random Seed", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "is_output_to_render_elements_only", text="Output to Render Elements Only", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "over_sampling", text="Over Sampling", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "antialiasing", text="Antialiasing", slider=True, text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "off_screen_distance", text="Offscreen Distance", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, node, "random_seed", text="Random Seed", text_ctxt=Translation.ctxt)
 
 class PCL4_PT_line(PCL4_PT_line_base, bpy.types.Panel):
     bl_idname = "PCL4_PT_line_parameters"

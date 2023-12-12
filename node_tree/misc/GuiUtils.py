@@ -5,6 +5,39 @@ import bpy
 from ...i18n import Translation
 from .IDSelectDialog import IDSelectOperatorMixin
 from . import DataUtils
+from . import AttrOverride
+
+def layout_prop(context, layout, node, prop_name, preserve_icon_space = False, preserve_icon_space_emboss = True, **kwargs):
+    source, prop = AttrOverride.get_override_source(node, prop_name, context)
+    if (source is not None or preserve_icon_space) and layout.direction == "VERTICAL":
+        layout = layout.row()
+    if source is not None:
+        if type(getattr(node, prop_name)) == bool and type(source.get(prop)) == int:
+            row = layout.row(align=True)
+            ot = row.operator("pcl4.toggle_bool_attribute_override", text="", icon="CHECKBOX_HLT" if source.get(prop) else "CHECKBOX_DEHLT", emboss=False)
+            ot.prop_name = prop
+            ot.data_ptr = str(source.as_pointer())
+            if "text" in kwargs and len(kwargs["text"]) > 0:
+                row.label(**kwargs)
+        else:
+            layout.prop(source, '["%s"]' % bpy.utils.escape_identifier(prop), **kwargs)
+        ot = layout.operator("pcl4.remove_attribute_override", text="", icon_value=layout.icon(source), depress=True)
+        ot.prop_name = prop
+        ot.data_ptr = str(source.as_pointer())
+    else:
+        layout.prop(node, prop_name, **kwargs)
+        if preserve_icon_space:
+            ot = layout.operator("pcl4.remove_attribute_override", text="", icon="BLANK1", emboss=preserve_icon_space_emboss)
+            ot.prop_name = ""
+            ot.data_ptr = ""
+
+def prop_pair(context, layout, node, prop_name0, label_text0, prop_name1, label_text1):
+    row = layout.row(align=True)
+    is_overrided0 = AttrOverride.is_overrided(node, prop_name0, context)
+    is_overrided1 = AttrOverride.is_overrided(node, prop_name1, context)
+    preserve_icon_space = is_overrided0 or is_overrided1
+    layout_prop(context, row, node, prop_name0, text=label_text0, text_ctxt=Translation.ctxt, preserve_icon_space=preserve_icon_space)
+    layout_prop(context, row, node, prop_name1, text=label_text1, text_ctxt=Translation.ctxt, preserve_icon_space=preserve_icon_space)
 
 def indented_box_column(layout, split_factor=0.02, algin=False):
     split = layout.split(factor=split_factor)
@@ -15,9 +48,9 @@ def indented_box_column(layout, split_factor=0.02, algin=False):
     col.use_property_split = False
     return col
 
-def map_property(layout, node, socket_id, heading, map_opacity_prop, map_opacity_text):
+def map_property(context, layout, node, socket_id, heading, map_opacity_prop, map_opacity_text):
     on_prop = socket_id + "_on_gui"
-    enabled = getattr(node, on_prop, False)
+    enabled = AttrOverride.get_overrided_attr(node, on_prop, context=context, default=False)
 
     row = layout.row()
     split = row.split(factor=0.4)
@@ -25,7 +58,7 @@ def map_property(layout, node, socket_id, heading, map_opacity_prop, map_opacity
 
     row = split.row(align=True)
     row.alignment = "RIGHT"
-    row.prop(node, on_prop, text="", text_ctxt=Translation.ctxt)
+    layout_prop(context, row, node, on_prop, text="", text_ctxt=Translation.ctxt)
     row.label(text=heading, text_ctxt=Translation.ctxt)
     row.label(text="", icon = "TEXTURE", text_ctxt=Translation.ctxt)
     
@@ -39,7 +72,9 @@ def map_property(layout, node, socket_id, heading, map_opacity_prop, map_opacity
     button.node.set(target_node)
     button.preferred_parent_node.set(node)
 
-    row.prop(node, map_opacity_prop, text=map_opacity_text, text_ctxt=Translation.ctxt)
+    if AttrOverride.is_overrided(node, map_opacity_prop, context):
+        row.label(text="", icon="BLANK1")
+    layout_prop(context, row, node, map_opacity_prop, text=map_opacity_text, text_ctxt=Translation.ctxt)
 
 def enum_property(layout, node, property, items, text: str=""):
     row = layout.row()
@@ -131,7 +166,8 @@ class IDSelectAddRemoveOperatorMixin(IDSelectOperatorMixin):
         if self.select_type == "ADD":
             targets = []
             if content_type.name == bpy.types.Material.__name__:
-                targets = [x for x in bpy.data.materials if not x.name.startswith("Pencil+ 4 Line Functions")]
+                targets = [x for x in bpy.data.materials
+                           if x.node_tree is None or all(node.bl_idname != "Pencil4LineFunctionsContainerNodeType" for node in x.node_tree.nodes)]
             elif content_type.name == bpy.types.Object.__name__:
                 targets = DataUtils.collect_objects_in_data()
             exludes = set(ids) | self.additional_excludes(context)

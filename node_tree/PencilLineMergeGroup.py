@@ -27,7 +27,7 @@ class PCL4_PT_LineMergeGroupPanel(bpy.types.Panel):
         layout.prop(collection, "pcl4_line_merge_group", text="On")
 
 def register_props():
-    bpy.types.Collection.pcl4_line_merge_group = bpy.props.BoolProperty()
+    bpy.types.Collection.pcl4_line_merge_group = bpy.props.BoolProperty(override={'LIBRARY_OVERRIDABLE'}, default=False)
 
 def unregister_props():
     pass

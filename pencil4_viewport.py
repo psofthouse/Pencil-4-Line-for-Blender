@@ -273,14 +273,14 @@ class ViewportLineRenderManager:
 
         #　ライン描画の実行
         if render_session.render_mode >= 0 and render_session.render_mode != cls.RenderMode.Wait:
-            depsgraph = bpy.context.evaluated_depsgraph_get()
-            if depsgraph is None:
-                return
-
             if cls.in_render_session or PCL4_OT_ViewportRender.is_rendering():
                 # Blenderのレンダリング実行中/ビューポートレンダリング出力中は強制的にライン描画を待機状態にする
                 render_session.render_mode = cls.RenderMode.Wait
             else:
+                depsgraph = bpy.context.evaluated_depsgraph_get()
+                if depsgraph is None:
+                    return
+
                 # 描画
                 draw_option = render_session.get_draw_option(new_if_none = True)
                 draw_option.timeout = 0.100 if render_session.render_mode != cls.RenderMode.Initialize else\
@@ -649,14 +649,35 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
     @staticmethod
     def is_rendering():
         return __class__.__timer is not None
+    
+    @staticmethod
+    def create_render_result_override_image(file_path: str) -> bpy.types.Image:
+        __class__.delete_render_result_override_image()
+        image = bpy.data.images.load(file_path, check_existing=True)
+        image.name = "Render Result (Pencil+ 4)"
+        image["is_pcl4_render_result"] = True
+        return image
+
+    @staticmethod
+    def delete_render_result_override_image():
+        while True:
+            image = next((image for image in bpy.data.images if image.get("is_pcl4_render_result", False)), None)
+            if image is not None:
+                bpy.data.images.remove(image)
+            else:
+                break
 
     @staticmethod
     def get_render_result_override_image() -> bpy.types.Image:
-        image = next((image for image in bpy.data.images if image.get("is_pcl4_render_result", False)), None)
-        if image is None:
-            image = bpy.data.images.new("Render Result (Pencil+ 4)", width=1, height=1, alpha=True)
-            image["is_pcl4_render_result"] = True
-        return image
+        return next((image for image in bpy.data.images if image.get("is_pcl4_render_result", False)), None)
+    
+    @staticmethod
+    def set_render_view_image(image: bpy.types.Image):
+        for window in bpy.context.window_manager.windows:
+            if window.screen.is_temporary and len(window.screen.areas) == 1 and window.screen.areas[0].type == "IMAGE_EDITOR":
+                if window.screen.areas[0].spaces[0].image != image:
+                    window.screen.areas[0].spaces[0].image = image
+
 
     def __init__(self):
         self.original_frame_current = 0
@@ -664,11 +685,13 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
         self.enalbe_background_color = False
         self.background_color = [1.0, 1.0, 1.0, 1.0]
         self.session = None
+        self.image_alpha_mode = None
 
     def cleanup(self, context):
         output_image = __class__.get_render_result_override_image()
-        output_image.pack()
-        output_image.unpack(method="REMOVE")
+        if output_image is not None:
+            output_image.pack()
+            output_image.unpack(method="REMOVE")
         context.window_manager.event_timer_remove(__class__.__timer)
         __class__.__timer = None
         context.window.cursor_modal_restore()
@@ -697,13 +720,22 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                 context.window.cursor_modal_set('WAIT')
                 render_image = next(image for image in bpy.data.images if image.type == "RENDER_RESULT")
                 render_image.save_render(frame_path)
-                output_image.source = "FILE"
-                output_image.filepath = frame_path
+                if output_image is None:
+                    output_image = __class__.create_render_result_override_image(frame_path)
+                    self.image_alpha_mode = output_image.alpha_mode
+                    __class__.set_render_view_image(output_image)
+                else:
+                    output_image.source = "FILE"
+                    output_image.alpha_mode = self.image_alpha_mode
+                    output_image.filepath = frame_path
                 display_device = context.scene.display_settings.display_device
-                if display_device in bpy.types.ColorManagedInputColorspaceSettings.bl_rna.properties["name"].enum_items:
+                if (display_device in bpy.types.ColorManagedInputColorspaceSettings.bl_rna.properties["name"].enum_items and
+                    context.scene.view_settings.view_transform != "Raw"):
                     output_image.colorspace_settings.name = display_device
                 else:
                     output_image.colorspace_settings.name = "Linear" if "Linear" in bpy.types.ColorManagedInputColorspaceSettings.bl_rna.properties["name"].enum_items else "Linear Rec.709"
+                    if context.scene.view_settings.view_transform == "Raw":
+                        output_image.use_view_as_render = True
 
                 # ライン描画を実行する
                 if self.session is None:
@@ -739,7 +771,7 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                             gpu.matrix.load_projection_matrix(Matrix.Identity(4))
                             tex = gpu.texture.from_image(output_image)
                             tex.read()
-                            gpu.state.blend_set("NONE")
+                            gpu.state.blend_set("NONE" if self.image_alpha_mode == "PREMUL" else "ALPHA")
                             draw_texture_2d(tex, (-1, -1), 2, 2)
                             if self.enalbe_background_color:
                                 tex = gpu.types.GPUTexture((8, 8))
@@ -758,6 +790,10 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                 output_image.pixels = buffer
             
             # レンダリング結果を保存する
+            if output_image is None:
+                self.report({'ERROR'}, "Failed to Pencil+ 4 Line Viewport Render.")
+                self.cancel(context)
+                return {'CANCELLED'}
             output_image.save_render(frame_path)
             if not self.animation or frame_current >= context.scene.frame_end:
                 self.cleanup(context)
@@ -787,17 +823,9 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                         for curve in object.animation_data.action.fcurves:
                             for keyframe in curve.keyframe_points:
                                 self.render_frames.add(int(keyframe.co[0]))
+        __class__.delete_render_result_override_image()
         bpy.ops.render.view_show('INVOKE_DEFAULT')
-        output_image = __class__.get_render_result_override_image()
-        if output_image.packed_file is not None:
-            output_image.unpack(method="REMOVE")
-        if output_image.source != "GENERATED":
-            output_image.source = "GENERATED"
-        for window in bpy.context.window_manager.windows:
-            if window.screen.is_temporary and len(window.screen.areas) == 1 and window.screen.areas[0].type == "IMAGE_EDITOR":
-                if window.screen.areas[0].spaces[0].image != output_image:
-                    output_image.scale(1, 1)
-                    window.screen.areas[0].spaces[0].image = output_image
+        __class__.set_render_view_image(None)
         return {"RUNNING_MODAL"}
 
     def cancel(self, context):

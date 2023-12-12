@@ -5,6 +5,8 @@ import bpy
 from .PencilNodeMixin import PencilNodeMixin
 from .PencilNodeSockets import LineSetSocket
 from ..misc.NamedRNAStruct import NamedRNAStruct
+from ..misc import GuiUtils
+from ..misc import AttrOverride
 
 LINE_SET_SOCKET_ID = "lineset"
 
@@ -52,7 +54,7 @@ class LineNode(bpy.types.Node, PencilNodeMixin):
     def draw_buttons(self, context, layout):
         row0 = layout.row()
         row = row0.row()
-        row.prop(self, "is_active", text="Active")
+        GuiUtils.layout_prop(context, row, self, "is_active", text="Active")
 
         for i, input in enumerate(self.inputs):
             if i < len(self.inputs) - 1 and not input.is_linked:
@@ -68,7 +70,7 @@ class LineNode(bpy.types.Node, PencilNodeMixin):
 
     def draw_socket(self, socket, context, layout, text):
         if isinstance(socket, LineSetSocket):
-            layout.enabled = self.is_active and\
+            layout.enabled = AttrOverride.get_overrided_attr(self, "is_active", context=context) and\
                 context.space_data.edit_tree.library is None
 
             row = layout.row()

@@ -409,6 +409,14 @@ translation_dict = {
         (ctxt, "Render Keyframes"):
             "キーフレームをレンダリング",
 
+        # Attribute Override
+        (ctxt, "Attribute Override"):
+            "属性オーバーライド",
+        (ctxt, "Attribute Override (Scene)"):
+            "属性オーバーライド (シーン)",
+        (ctxt, "Attribute Override (ViewLayer)"):
+            "属性オーバーライド (ビューレイヤー)",
+
         # Preferences
         (ctxt, "Show Preferences"):
             "プリファレンスを表示",

@@ -137,7 +137,7 @@ class Pencil4RenderSession:
                     space: bpy.types.SpaceView3D = None,
                     is_cycles: bool = False):
         # ライン描画設定が何もなければライン描画せず終了
-        (line_nodes, line_function_nodes) = PencilNodeTree.generate_cpp_nodes()
+        (line_nodes, line_function_nodes) = PencilNodeTree.generate_cpp_nodes(depsgraph)
         if len(line_nodes) == 0:
             pencil4_render_images.reset_image(image)
             for i in element_dict.keys():
@@ -254,9 +254,13 @@ class Pencil4RenderSession:
                 if object.type == "EMPTY" and object.instance_type == "COLLECTION":
                     collect_group(object.instance_collection)
             if collection.pcl4_line_merge_group:
-                objects = list(x for x in collection.all_objects if x in ungrouped_objects)
+                objects = set()
+                for x in collection.all_objects:
+                    x = x if x.override_library is None else x.override_library.reference
+                    if x in ungrouped_objects:
+                        objects.add(x)
                 if len(objects) > 0:
-                    groups.append(objects)
+                    groups.append(list(objects))
                     ungrouped_objects.difference_update(objects)
         collect_group(depsgraph.scene.collection)
 

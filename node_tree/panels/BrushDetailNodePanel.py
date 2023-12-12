@@ -7,9 +7,11 @@ import bpy
 from ..nodes.BrushDetailNode import BrushDetailNode
 from ..PencilNodeTree import PencilNodeTree
 from ..misc import GuiUtils
+from ..misc.GuiUtils import layout_prop
+from ..misc.AttrOverride import get_overrided_attr
 from ...i18n import Translation
 
-def split2_property(layout, data, property: str, label:str, text: str, left_right: int=0):
+def split2_property(context, layout, data, property: str, label:str, text: str, left_right: int=0):
     split = layout.split(factor=0.4)
     row = split.row()
     row.alignment = "RIGHT"
@@ -25,7 +27,7 @@ def split2_property(layout, data, property: str, label:str, text: str, left_righ
 
     if left_right != 0:
         dummy()
-    row.prop(data, property, text=text, text_ctxt=Translation.ctxt)
+    layout_prop(context, row, data, property, text=text, text_ctxt=Translation.ctxt)
     if left_right == 0:
         dummy()
 
@@ -54,16 +56,14 @@ class PCL4_PT_brush_detail_brush_editor(PCL4_PT_brush_detail_mixin, bpy.types.Pa
         node = context.active_node
 
         GuiUtils.enum_property(layout, node, "brush_type", BrushDetailNode.brush_type_items, text="Brush Type")
-        type = getattr(node, "brush_type", "SIMPLE")
+        type = get_overrided_attr(node, "brush_type", context=context, default="SIMPLE")
 
         def prop_pair(prop_name0, label_text0, prop_name1, label_text1):
-            row = col.row(align=True)
-            row.prop(node, prop_name0, text=label_text0, text_ctxt=Translation.ctxt)
-            row.prop(node, prop_name1, text=label_text1, text_ctxt=Translation.ctxt)
+            GuiUtils.prop_pair(context, col, node, prop_name0, label_text0, prop_name1, label_text1)
 
         col = layout.column(align=True)
         col.enabled = type != "SIMPLE"
-        GuiUtils.map_property(col, node, "brush_map", "Brush Map",
+        GuiUtils.map_property(context, col, node, "brush_map", "Brush Map",
                                          "brush_map_opacity", "Opacity")
                                          
         col = layout.column(align=True)
@@ -77,7 +77,7 @@ class PCL4_PT_brush_detail_brush_editor(PCL4_PT_brush_detail_mixin, bpy.types.Pa
         col = layout.column(align=True)
         col.enabled = type == "MULTIPLE"
         prop_pair("size", "Size", "size_random", "Random")
-        split2_property(col, node, "antialiasing", label="Antialiasing", text="", left_right=0)
+        split2_property(context, col, node, "antialiasing", label="Antialiasing", text="", left_right=0)
         prop_pair("horizontal_space", "Horizontal Space", "horizontal_space_random", "Random")
         prop_pair("vertical_space", "Vertical Space","vertical_space_random", "Random")
 
@@ -90,8 +90,8 @@ class PCL4_PT_brush_detail_brush_editor(PCL4_PT_brush_detail_mixin, bpy.types.Pa
         row.label(text="Reduction", text_ctxt=Translation.ctxt)
         split = split.split(factor=1.0)
         row = split.row(align=True)
-        row.prop(node, "reduction_start", text="Start", text_ctxt=Translation.ctxt)
-        row.prop(node, "reduction_end", text="End", text_ctxt=Translation.ctxt)
+        layout_prop(context, row, node, "reduction_start", text="Start", text_ctxt=Translation.ctxt)
+        layout_prop(context, row, node, "reduction_end", text="End", text_ctxt=Translation.ctxt)
 
 
 class PCL4_PT_brush_detail_stroke(PCL4_PT_brush_detail_mixin, bpy.types.Panel):
@@ -107,25 +107,23 @@ class PCL4_PT_brush_detail_stroke(PCL4_PT_brush_detail_mixin, bpy.types.Panel):
         node = context.active_node
 
         def prop(prop_name, label_text):
-            col.prop(node, prop_name, text=label_text, text_ctxt=Translation.ctxt)
+            layout_prop(context, col, node, prop_name, text=label_text, text_ctxt=Translation.ctxt)
         def prop_pair(prop_name0, label_text0, prop_name1, label_text1):
-            row = col.row(align=True)
-            row.prop(node, prop_name0, text=label_text0, text_ctxt=Translation.ctxt)
-            row.prop(node, prop_name1, text=label_text1, text_ctxt=Translation.ctxt)
+            GuiUtils.prop_pair(context, col, node, prop_name0, label_text0, prop_name1, label_text1)
 
         col = layout.column(align=True)
-        col.enabled = getattr(node, "brush_type", "SIMPLE") != "SIMPLE"
+        col.enabled = get_overrided_attr(node, "brush_type", context=context, default="SIMPLE") != "SIMPLE"
         GuiUtils.enum_property(col, node, "stroke_type", BrushDetailNode.stroke_type_items, text="Stroke Type")
 
         col = layout.column(align=True)
         GuiUtils.enum_property(col, node, "line_type", BrushDetailNode.line_type_items, text="Line Type")
         col = col.column(align=True)
-        col.enabled = getattr(node, "line_type", "FULL") != "FULL"
+        col.enabled = get_overrided_attr(node, "line_type", context=context, default="FULL") != "FULL"
         prop_pair("length", "Length", "length_random", "Random")
         prop_pair("space", "Space", "space_random", "Random")
 
         col = layout.column(align=True)
-        split2_property(col, node, "stroke_size_random", label="Size", text="Random", left_right=1)
+        split2_property(context, col, node, "stroke_size_random", label="Size", text="Random", left_right=1)
         prop_pair("extend", "Extend", "extend_random", "Random")
         prop_pair("line_copy", "Line Copy", "line_copy_random", "Random")
         prop_pair("normal_offset", "Normal Offset", "normal_offset_random", "Random")
@@ -148,24 +146,22 @@ class PCL4_PT_brush_detail_distortion(PCL4_PT_brush_detail_mixin, bpy.types.Pane
     def draw_header(self, context):
         layout = self.layout
         node = context.active_node
-        layout.prop(node, "distortion_enabled", text="Distortion", text_ctxt=Translation.ctxt)
+        layout_prop(context, layout, node, "distortion_enabled", text="Distortion", text_ctxt=Translation.ctxt)
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
-        layout.enabled = PencilNodeTree.tree_from_context(context).is_entity()
         node = context.active_node
+        layout.enabled = PencilNodeTree.tree_from_context(context).is_entity() and\
+            get_overrided_attr(node, "distortion_enabled", context=context, default=False)
 
         def prop_pair(prop_name0, label_text0, prop_name1, label_text1):
-            row = col.row(align=True)
-            row.prop(node, prop_name0, text=label_text0, text_ctxt=Translation.ctxt)
-            row.prop(node, prop_name1, text=label_text1, text_ctxt=Translation.ctxt)
+            GuiUtils.prop_pair(context, col, node, prop_name0, label_text0, prop_name1, label_text1)
 
         col = layout.column(align=True)
-        col.enabled = getattr(node, "distortion_enabled", False)
 
-        GuiUtils.map_property(col, node, "distortion_map", "Distortion Map",
+        GuiUtils.map_property(context, col, node, "distortion_map", "Distortion Map",
                                          "distortion_map_amount", "Amount")
 
         col = layout.column(align=True)
@@ -182,12 +178,12 @@ class PCL4_PT_brush_detail_size_reduction(PCL4_PT_brush_detail_mixin, bpy.types.
     def draw_header(self, context):
         layout = self.layout
         node = context.active_node
-        layout.prop(node, "size_reduction_enabled", text="Stroke Size Reduction Settings", text_ctxt=Translation.ctxt)
+        layout_prop(context, layout, node, "size_reduction_enabled", text="Stroke Size Reduction Settings", text_ctxt=Translation.ctxt)
 
     def draw(self, context):
         layout = self.layout
         node = context.active_node
-        layout.enabled = getattr(node, "size_reduction_enabled", False) and\
+        layout.enabled = get_overrided_attr(node, "size_reduction_enabled", context=context, default=False) and\
                 PencilNodeTree.tree_from_context(context).is_entity()
 
         data = node.get_curve_data(node.size_reduction_curve)
@@ -203,12 +199,12 @@ class PCL4_PT_brush_detail_alpha_reduction(PCL4_PT_brush_detail_mixin, bpy.types
     def draw_header(self, context):
         layout = self.layout
         node = context.active_node
-        layout.prop(node, "alpha_reduction_enabled", text="Stroke Alpha Reduction Settings", text_ctxt=Translation.ctxt)
+        layout_prop(context, layout, node, "alpha_reduction_enabled", text="Stroke Alpha Reduction Settings", text_ctxt=Translation.ctxt)
 
     def draw(self, context):
         layout = self.layout
         node = context.active_node
-        layout.enabled = getattr(node, "alpha_reduction_enabled", False) and\
+        layout.enabled = get_overrided_attr(node, "alpha_reduction_enabled", context=context, default=False) and\
                 PencilNodeTree.tree_from_context(context).is_entity()
 
         data = node.get_curve_data(node.alpha_reduction_curve)
@@ -229,10 +225,10 @@ class PCL4_PT_brush_detail_color_range(PCL4_PT_brush_detail_mixin, bpy.types.Pan
         col = layout.column(align=True)
 
         row = col.row()
-        row.prop(node, "color_space_type", expand=True)
+        layout_prop(context, row, node, "color_space_type", expand=True)
 
         def prop(prop_name, label_text):
-            row.prop(node, prop_name, text=label_text, text_ctxt=Translation.ctxt)
+            layout_prop(context, row, node, prop_name, text=label_text, text_ctxt=Translation.ctxt)
         row = col.row(align=True)
         if node.color_space_type == "RGB":
             prop("color_space_red", "R")

@@ -13,6 +13,7 @@ from .misc.IDMap import MaterialIDMap
 from .misc.IDMap import ObjectIDMap
 from .misc import DataUtils
 from .misc import GuiUtils
+from .misc import AttrOverride
 from .nodes.LineNode import LineNode
 from .nodes.LineSetNode import LineSetNode
 from .nodes.BrushSettingsNode import BrushSettingsNode
@@ -95,7 +96,7 @@ class PencilNodeTree(bpy.types.NodeTree):
                 self.set_selected_line(lines[0])
 
     @classmethod
-    def generate_cpp_nodes(cls):
+    def generate_cpp_nodes(cls, depsgraph: bpy.types.Depsgraph=None):
         if platform.system() == "Windows":
             if sys.version_info.major == 3 and sys.version_info.minor == 9:
                 from ..bin import pencil4line_for_blender_win64_39 as cpp
@@ -115,11 +116,11 @@ class PencilNodeTree(bpy.types.NodeTree):
             if not isinstance(py_node, PencilNodeMixin) or py_node.mute:
                 continue
             if isinstance(py_node, LineNode):
-                if not py_node.is_active:
+                if not AttrOverride.get_overrided_attr(py_node, "is_active", depsgraph=depsgraph):
                     continue
                 cpp_node = cpp.line_node()
             elif isinstance(py_node, LineSetNode):
-                if not py_node.is_on:
+                if not AttrOverride.get_overrided_attr(py_node, "is_on", depsgraph=depsgraph):
                     continue
                 cpp_node = cpp.line_set_node()
             elif isinstance(py_node, BrushSettingsNode):
@@ -144,7 +145,7 @@ class PencilNodeTree(bpy.types.NodeTree):
 
         # 各ノードに値を詰める
         for py_node, cpp_node in node_dict.items():
-            cpp_ulits.copy_props(py_node, cpp_node, node_dict)
+            cpp_ulits.copy_props(py_node, cpp_node, node_dict, depsgraph=depsgraph)
 
         for py_node, target_materials in line_function_nodes_dict.items():
             node_dict[py_node]._target_materials = target_materials

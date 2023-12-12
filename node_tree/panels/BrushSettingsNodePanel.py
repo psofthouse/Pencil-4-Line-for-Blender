@@ -5,6 +5,7 @@ import bpy
 
 from ..nodes.BrushSettingsNode import BrushSettingsNode
 from ..misc import GuiUtils
+from ..misc.GuiUtils import layout_prop
 from ..PencilNodeTree import PencilNodeTree
 from ...i18n import Translation
 
@@ -19,7 +20,8 @@ class PCL4_PT_brush_settings_base:
     
     def draw(self, context):
         layout = self.layout
-        layout.enabled = PencilNodeTree.tree_from_context(context).is_entity()
+        layout.enabled = PencilNodeTree.tree_from_context(context).is_entity() and\
+            self.brush_settings_enabled(context)
         layout.use_property_split = True
         layout.use_property_decorate = False
         node = self.brush_settings_node(context)
@@ -29,19 +31,15 @@ class PCL4_PT_brush_settings_base:
         col = layout.column(align=True)
 
         def prop_pair(prop_name0, label_text0, prop_name1, label_text1):
-            row = col.row(align=True)
-            row.prop(node, prop_name0, text=label_text0, text_ctxt=Translation.ctxt)
-            row.prop(node, prop_name1, text=label_text1, text_ctxt=Translation.ctxt)
-
-        col.enabled = self.brush_settings_enabled(context)
+            GuiUtils.prop_pair(context, col, node, prop_name0, label_text0, prop_name1, label_text1)
 
         prop_pair("brush_color", "Color", "blend_amount", "Blend Amount")
-        GuiUtils.map_property(col, node, "color_map", "Color Map",
+        GuiUtils.map_property(context, col, node, "color_map", "Color Map",
                                          "color_map_opacity", "Opacity")
 
         col = layout.column(align=True)
-        col.prop(node, "size", text="Size", text_ctxt=Translation.ctxt)
-        GuiUtils.map_property(col, node, "size_map", "Size Map",
+        layout_prop(context, col, node, "size", text="Size", text_ctxt=Translation.ctxt)
+        GuiUtils.map_property(context, col, node, "size_map", "Size Map",
                                          "size_map_amount", "Amount")
 
         # 配下のBrushDetailのStretchとAngleを表示する
@@ -51,8 +49,8 @@ class PCL4_PT_brush_settings_base:
             return
 
         col = layout.column(align=True)
-        col.prop(brush_detail, "stretch", text="Stretch", text_ctxt=Translation.ctxt)
-        col.prop(brush_detail, "angle", text="Angle", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, brush_detail, "stretch", text="Stretch", text_ctxt=Translation.ctxt)
+        layout_prop(context, col, brush_detail, "angle", text="Angle", text_ctxt=Translation.ctxt)
 
     @classmethod
     def brush_settings_node(cls, context):
