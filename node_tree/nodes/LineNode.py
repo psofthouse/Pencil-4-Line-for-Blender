@@ -24,21 +24,22 @@ class LineNode(bpy.types.Node, PencilNodeMixin):
         ('RELATIVE', "Relative (640*480)", "Relative", 1),
     )
 
-    node_name: bpy.props.StringProperty(get=lambda self: self.name)
+    node_name: bpy.props.StringProperty(get=lambda self: self.name, override={'LIBRARY_OVERRIDABLE'})
 
-    is_active: bpy.props.BoolProperty(default=True)
-    render_priority: bpy.props.IntProperty(default=0, min=0, max=65535)
+    is_active: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
+    render_priority: bpy.props.IntProperty(default=0, min=0, max=65535, override={'LIBRARY_OVERRIDABLE'})
 
     line_sets: bpy.props.StringProperty(default=LINE_SET_SOCKET_ID,
+                                        override={'LIBRARY_OVERRIDABLE'},
                                         set=lambda self, value: None)
 
-    line_size_type: bpy.props.EnumProperty(items=line_size_type_items, default="ABSOLUTE")
+    line_size_type: bpy.props.EnumProperty(items=line_size_type_items, default="ABSOLUTE", override={'LIBRARY_OVERRIDABLE'})
 
-    is_output_to_render_elements_only: bpy.props.BoolProperty(default=False)
-    over_sampling: bpy.props.IntProperty(default=2, min=1, max=4)
-    antialiasing: bpy.props.FloatProperty(default=1.0, min=0.0, max=2.0, step=1.0)
-    off_screen_distance: bpy.props.FloatProperty(default=150.0, min=0.0, max=1000.0, subtype="PIXEL")
-    random_seed: bpy.props.IntProperty(default=0, min=0, max=65535)
+    is_output_to_render_elements_only: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    over_sampling: bpy.props.IntProperty(default=2, min=1, max=4, override={'LIBRARY_OVERRIDABLE'})
+    antialiasing: bpy.props.FloatProperty(default=1.0, min=0.0, max=2.0, step=1.0, override={'LIBRARY_OVERRIDABLE'})
+    off_screen_distance: bpy.props.FloatProperty(default=150.0, min=0.0, max=1000.0, subtype="PIXEL", override={'LIBRARY_OVERRIDABLE'})
+    random_seed: bpy.props.IntProperty(default=0, min=0, max=65535, override={'LIBRARY_OVERRIDABLE'})
 
     def init(self, context):
         super().init()

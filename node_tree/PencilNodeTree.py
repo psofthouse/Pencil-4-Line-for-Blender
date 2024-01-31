@@ -112,7 +112,7 @@ class PencilNodeTree(bpy.types.NodeTree):
         node_dict = {}
 
         # 全てのPencilNodeTree配下のノードを列挙
-        for py_node in cls.enumerate_all_nodes():
+        for py_node in cls.__enumerate_all_nodes_for_render():
             if not isinstance(py_node, PencilNodeMixin) or py_node.mute:
                 continue
             if isinstance(py_node, LineNode):
@@ -162,6 +162,14 @@ class PencilNodeTree(bpy.types.NodeTree):
         return itertools.chain.from_iterable(tree.nodes for tree in cls.enumerate_trees())
 
     @classmethod
+    def __enumerate_all_nodes_for_render(cls):
+        override_library_references = set()
+        for tree in cls.enumerate_trees():
+            if tree.override_library is not None:
+                override_library_references.add(tree.override_library.reference)
+        return itertools.chain.from_iterable(tree.nodes for tree in cls.enumerate_trees() if tree.is_entity() or not tree in override_library_references)
+
+    @classmethod
     def enumerate_all_lines(cls):
         return sorted((x for x in cls.enumerate_all_nodes() if x.__class__.__name__ == "LineNode"),
                       key=lambda n: (n.render_priority, n.name))
@@ -177,7 +185,7 @@ class PencilNodeTree(bpy.types.NodeTree):
     selected_line_node: bpy.props.PointerProperty(type=NamedRNAStruct, options={"HIDDEN", "SKIP_SAVE"})
 
     def get_selected_line(self):
-        return self.selected_line_node.find(self.nodes.values())
+        return self.selected_line_node.find([n for n in self.nodes.values() if isinstance(n, LineNode)])
 
     def set_selected_line(self, node):
         if node is None and (not isinstance(node, LineNode) or not node in self.nodes.values()):

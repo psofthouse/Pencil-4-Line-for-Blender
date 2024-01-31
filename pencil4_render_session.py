@@ -248,6 +248,8 @@ class Pencil4RenderSession:
         # グループ設定
         groups = []
         def collect_group(collection: bpy.types.Collection):
+            if collection is None:
+                return
             for child in collection.children:
                 collect_group(child)
             for object in collection.objects:

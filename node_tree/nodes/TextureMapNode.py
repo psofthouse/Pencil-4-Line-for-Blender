@@ -41,23 +41,23 @@ class TextureMapNode(bpy.types.Node, PencilNodeMixin):
         ("NAME", "Name", "", 1),
     )
 
-    source_type: bpy.props.EnumProperty(items=source_type_items, default="IMAGE")
+    source_type: bpy.props.EnumProperty(items=source_type_items, default="IMAGE", override={'LIBRARY_OVERRIDABLE'})
 
-    image: bpy.props.PointerProperty(type=bpy.types.Image)
-    wrap_mode_u: bpy.props.EnumProperty(items=wrap_mode_items, default="REPEAT")
-    wrap_mode_v: bpy.props.EnumProperty(items=wrap_mode_items, default="REPEAT")
-    filter_mode: bpy.props.EnumProperty(items=filter_mode_items, default="BILINEAR")
-    tiling: bpy.props.FloatVectorProperty(subtype="XYZ", size=2, default=[1.0, 1.0])
-    offset: bpy.props.FloatVectorProperty(subtype="XYZ", size=2, default=[0.0, 0.0])
+    image: bpy.props.PointerProperty(type=bpy.types.Image, override={'LIBRARY_OVERRIDABLE'})
+    wrap_mode_u: bpy.props.EnumProperty(items=wrap_mode_items, default="REPEAT", override={'LIBRARY_OVERRIDABLE'})
+    wrap_mode_v: bpy.props.EnumProperty(items=wrap_mode_items, default="REPEAT", override={'LIBRARY_OVERRIDABLE'})
+    filter_mode: bpy.props.EnumProperty(items=filter_mode_items, default="BILINEAR", override={'LIBRARY_OVERRIDABLE'})
+    tiling: bpy.props.FloatVectorProperty(subtype="XYZ", size=2, default=[1.0, 1.0], override={'LIBRARY_OVERRIDABLE'})
+    offset: bpy.props.FloatVectorProperty(subtype="XYZ", size=2, default=[0.0, 0.0], override={'LIBRARY_OVERRIDABLE'})
 
-    uv_source: bpy.props.EnumProperty(items=uv_source_items, default="SCREEN")
-    uv_selection_mode: bpy.props.EnumProperty(items=selection_mode_items, default="INDEX")
-    uv_index: bpy.props.IntProperty(default=0, min=0, max=7)
-    uv_name: bpy.props.StringProperty(default="UVMap")
+    uv_source: bpy.props.EnumProperty(items=uv_source_items, default="SCREEN", override={'LIBRARY_OVERRIDABLE'})
+    uv_selection_mode: bpy.props.EnumProperty(items=selection_mode_items, default="INDEX", override={'LIBRARY_OVERRIDABLE'})
+    uv_index: bpy.props.IntProperty(default=0, min=0, max=7, override={'LIBRARY_OVERRIDABLE'})
+    uv_name: bpy.props.StringProperty(default="UVMap", override={'LIBRARY_OVERRIDABLE'})
 
-    object_color_selection_mode: bpy.props.EnumProperty(items=selection_mode_items, default="INDEX")
-    object_color_index: bpy.props.IntProperty(default=0, min=0, max=7)
-    object_color_name: bpy.props.StringProperty(default="Color")
+    object_color_selection_mode: bpy.props.EnumProperty(items=selection_mode_items, default="INDEX", override={'LIBRARY_OVERRIDABLE'})
+    object_color_index: bpy.props.IntProperty(default=0, min=0, max=7, override={'LIBRARY_OVERRIDABLE'})
+    object_color_name: bpy.props.StringProperty(default="Color", override={'LIBRARY_OVERRIDABLE'})
 
     def init(self, context):
         super().init()

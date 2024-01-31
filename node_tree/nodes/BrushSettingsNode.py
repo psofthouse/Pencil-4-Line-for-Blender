@@ -31,34 +31,39 @@ class BrushSettingsNode(bpy.types.Node, PencilNodeMixin):
         subtype="FACTOR",
         default=1.0,
         min=0.0,
-        max=1.0)
+        max=1.0,
+        override={'LIBRARY_OVERRIDABLE'})
     brush_color: bpy.props.FloatVectorProperty(
         subtype="COLOR",
         size=3,
         min=0.0,
         max=1.0,
-        default=[0.0, 0.0, 0.0])
+        default=[0.0, 0.0, 0.0],
+        override={'LIBRARY_OVERRIDABLE'})
 
     # color_map
-    color_map_on: bpy.props.BoolProperty(default=False)
+    color_map_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     color_map_on_gui: bpy.props.BoolProperty(get=lambda self: self.color_map_on, set=lambda self, value: setattr(self, "color_map_on", value),
-        update=lambda self, ctx: self.auto_create_node_when_property_on(ctx, COLOR_MAP_SOCKET_ID))
+        update=lambda self, ctx: self.auto_create_node_when_property_on(ctx, COLOR_MAP_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     color_map: bpy.props.StringProperty(
         default=COLOR_MAP_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(COLOR_MAP_SOCKET_ID),
         set=lambda self, val: None)
-    color_map_opacity: bpy.props.FloatProperty(default=1.0, min=0.0, max=1.0, subtype="FACTOR")
-    size: bpy.props.FloatProperty(default=1.0, min=0.001, max=100.0, soft_min=0.1, soft_max=20.0, subtype="PIXEL")
+    color_map_opacity: bpy.props.FloatProperty(default=1.0, min=0.0, max=1.0, subtype="FACTOR", override={'LIBRARY_OVERRIDABLE'})
+
+    size: bpy.props.FloatProperty(default=1.0, min=0.001, max=100.0, soft_min=0.1, soft_max=20.0, subtype="PIXEL", override={'LIBRARY_OVERRIDABLE'})
 
     # size map
-    size_map_on: bpy.props.BoolProperty(default=False)
+    size_map_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     size_map_on_gui: bpy.props.BoolProperty(get=lambda self: self.size_map_on, set=lambda self, value: setattr(self, "size_map_on", value),
-        update=lambda self, ctx: self.auto_create_node_when_property_on(ctx, SIZE_MAP_SOCKET_ID))
+        update=lambda self, ctx: self.auto_create_node_when_property_on(ctx, SIZE_MAP_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     size_map: bpy.props.StringProperty(
         default=SIZE_MAP_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(SIZE_MAP_SOCKET_ID),
         set=lambda self, val: None)
-    size_map_amount: bpy.props.FloatProperty(default=1.0, min=0.0, max=1.0, subtype="FACTOR")
+    size_map_amount: bpy.props.FloatProperty(default=1.0, min=0.0, max=1.0, subtype="FACTOR", override={'LIBRARY_OVERRIDABLE'})
 
     def init(self, context):
         super().init()

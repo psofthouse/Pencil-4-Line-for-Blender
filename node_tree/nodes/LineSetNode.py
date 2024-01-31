@@ -52,21 +52,21 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
             brush_settings.create_new_node(0, context.space_data.edit_tree)
         GuiUtils.update_view3d_area(context.screen)
 
-    node_name: bpy.props.StringProperty(get=lambda self: self.name)
+    node_name: bpy.props.StringProperty(get=lambda self: self.name, override={'LIBRARY_OVERRIDABLE'})
 
-    is_on: bpy.props.BoolProperty(default=True)
-    lineset_id: bpy.props.IntProperty(default=1, min=1, max=8)
+    is_on: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
+    lineset_id: bpy.props.IntProperty(default=1, min=1, max=8, override={'LIBRARY_OVERRIDABLE'})
 
     # objects
-    objects: bpy.props.CollectionProperty(type=ObjectElement)
-    objects_selected_index: bpy.props.IntProperty()
+    objects: bpy.props.CollectionProperty(type=ObjectElement, override={'LIBRARY_OVERRIDABLE'})
+    objects_selected_index: bpy.props.IntProperty(override={'LIBRARY_OVERRIDABLE'})
 
     # materials
-    materials: bpy.props.CollectionProperty(type=MaterialElement)
-    materials_selected_index: bpy.props.IntProperty()
+    materials: bpy.props.CollectionProperty(type=MaterialElement, override={'LIBRARY_OVERRIDABLE'})
+    materials_selected_index: bpy.props.IntProperty(override={'LIBRARY_OVERRIDABLE'})
 
-    is_weld_edges: bpy.props.BoolProperty(default=False)
-    is_mask_hidden_lines: bpy.props.BoolProperty(default=False)
+    is_weld_edges: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    is_mask_hidden_lines: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
 
     # v brush settings
     v_brush_settings: bpy.props.StringProperty(
@@ -74,104 +74,114 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         set=lambda self, val: None)
 
     # v outline
-    v_outline_on: bpy.props.BoolProperty(default=True)
-    v_outline_open: bpy.props.BoolProperty(default=True)
-    v_outline_merge_groups: bpy.props.BoolProperty(default=False)
-    v_outline_specific_on: bpy.props.BoolProperty(default=False)
+    v_outline_on: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
+    v_outline_open: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
+    v_outline_merge_groups: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    v_outline_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     v_outline_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.v_outline_specific_on, set=lambda self, value: setattr(self, "v_outline_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, V_OUTLINE_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, V_OUTLINE_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     v_outline_brush_settings: bpy.props.StringProperty(
         default=V_OUTLINE_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(V_OUTLINE_SOCKET_ID),
         set=lambda self, val: None)
 
     # v object
-    v_object_on: bpy.props.BoolProperty(default=True)
-    v_object_open: bpy.props.BoolProperty(default=True)
-    v_object_specific_on: bpy.props.BoolProperty(default=False)
+    v_object_on: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
+    v_object_open: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
+    v_object_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     v_object_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.v_object_specific_on, set=lambda self, value: setattr(self, "v_object_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, V_OBJECT_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, V_OBJECT_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     v_object_brush_settings: bpy.props.StringProperty(
         default=V_OBJECT_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(V_OBJECT_SOCKET_ID),
         set=lambda self, val: None)
 
     # v intersection
-    v_intersection_on: bpy.props.BoolProperty(default=True)
-    v_intersection_self: bpy.props.BoolProperty(default=True)
-    v_intersection_specific_on: bpy.props.BoolProperty(default=False)
+    v_intersection_on: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
+    v_intersection_self: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
+    v_intersection_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     v_intersection_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.v_intersection_specific_on, set=lambda self, value: setattr(self, "v_intersection_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, V_INTERSECTION_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, V_INTERSECTION_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     v_intersection_brush_settings: bpy.props.StringProperty(
         default=V_INTERSECTION_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(V_INTERSECTION_SOCKET_ID),
         set=lambda self, val: None)
 
     # v smooth
-    v_smooth_on: bpy.props.BoolProperty(default=True)
-    v_smooth_specific_on: bpy.props.BoolProperty(default=False)
+    v_smooth_on: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
+    v_smooth_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     v_smooth_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.v_smooth_specific_on, set=lambda self, value: setattr(self, "v_smooth_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, V_SMOOTH_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, V_SMOOTH_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     v_smooth_brush_settings: bpy.props.StringProperty(
         default=V_SMOOTH_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(V_SMOOTH_SOCKET_ID),
         set=lambda self, val: None)
 
     # v material
-    v_material_on: bpy.props.BoolProperty(default=True)
-    v_material_specific_on: bpy.props.BoolProperty(default=False)
+    v_material_on: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
+    v_material_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     v_material_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.v_material_specific_on, set=lambda self, value: setattr(self, "v_material_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, V_MATERIAL_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, V_MATERIAL_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     v_material_brush_settings: bpy.props.StringProperty(
         default=V_MATERIAL_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(V_MATERIAL_SOCKET_ID),
         set=lambda self, val: None)
 
     # v selected
-    v_selected_on: bpy.props.BoolProperty(default=True)
-    v_selected_specific_on: bpy.props.BoolProperty(default=False)
+    v_selected_on: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
+    v_selected_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     v_selected_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.v_selected_specific_on, set=lambda self, value: setattr(self, "v_selected_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, V_SELECTED_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, V_SELECTED_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     v_selected_brush_settings: bpy.props.StringProperty(
         default=V_SELECTED_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(V_SELECTED_SOCKET_ID),
         set=lambda self, val: None)
 
     # v normal angle
-    v_normal_angle_on: bpy.props.BoolProperty(default=False)
-    v_normal_angle_specific_on: bpy.props.BoolProperty(default=False)
+    v_normal_angle_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    v_normal_angle_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     v_normal_angle_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.v_normal_angle_specific_on, set=lambda self, value: setattr(self, "v_normal_angle_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, V_NORMAL_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, V_NORMAL_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     v_normal_angle_brush_settings: bpy.props.StringProperty(
         default=V_NORMAL_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(V_NORMAL_SOCKET_ID),
         set=lambda self, val: None)
-    v_normal_angle_min: bpy.props.FloatProperty(default=0.25 * math.pi, min=0.0, max=math.pi, subtype="ANGLE")
-    v_normal_angle_max: bpy.props.FloatProperty(default=math.pi, min=0.0, max=math.pi, subtype="ANGLE")
+    v_normal_angle_min: bpy.props.FloatProperty(default=0.25 * math.pi, min=0.0, max=math.pi, subtype="ANGLE", override={'LIBRARY_OVERRIDABLE'})
+    v_normal_angle_max: bpy.props.FloatProperty(default=math.pi, min=0.0, max=math.pi, subtype="ANGLE", override={'LIBRARY_OVERRIDABLE'})
 
     # v wireframe
-    v_wireframe_on: bpy.props.BoolProperty(default=False)
-    v_wireframe_specific_on: bpy.props.BoolProperty(default=False)
+    v_wireframe_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    v_wireframe_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     v_wireframe_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.v_wireframe_specific_on, set=lambda self, value: setattr(self, "v_wireframe_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, V_WIREFRAME_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, V_WIREFRAME_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     v_wireframe_brush_settings: bpy.props.StringProperty(
         default=V_WIREFRAME_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(V_WIREFRAME_SOCKET_ID),
         set=lambda self, val: None)
 
     # v size reduction
-    v_size_reduction_on: bpy.props.BoolProperty(default=False)
+    v_size_reduction_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     v_size_reduction_on_gui: bpy.props.BoolProperty(get=lambda self: self.v_size_reduction_on, set=lambda self, value: setattr(self, "v_size_reduction_on", value),
-        update=lambda self, ctx: self.auto_create_node_when_property_on(ctx, V_SIZE_REDUCTION_SOCKET_ID))
+        update=lambda self, ctx: self.auto_create_node_when_property_on(ctx, V_SIZE_REDUCTION_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     v_size_reduction_settings: bpy.props.StringProperty(
         default=V_SIZE_REDUCTION_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(V_SIZE_REDUCTION_SOCKET_ID),
         set=lambda self, val: None)
 
     # v alpha reduction
-    v_alpha_reduction_on: bpy.props.BoolProperty(default=False)
+    v_alpha_reduction_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     v_alpha_reduction_on_gui: bpy.props.BoolProperty(get=lambda self: self.v_alpha_reduction_on, set=lambda self, value: setattr(self, "v_alpha_reduction_on", value),
-        update=lambda self, ctx: self.auto_create_node_when_property_on(ctx, V_ALPHA_REDUCTION_SOCKET_ID))
+        update=lambda self, ctx: self.auto_create_node_when_property_on(ctx, V_ALPHA_REDUCTION_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     v_alpha_reduction_settings: bpy.props.StringProperty(
         default=V_ALPHA_REDUCTION_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(V_ALPHA_REDUCTION_SOCKET_ID),
@@ -183,104 +193,114 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         set=lambda self, val: None)
 
     # h outline
-    h_outline_on: bpy.props.BoolProperty(default=False)
-    h_outline_open: bpy.props.BoolProperty(default=True)
-    h_outline_merge_groups: bpy.props.BoolProperty(default=False)
-    h_outline_specific_on: bpy.props.BoolProperty(default=False)
+    h_outline_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    h_outline_open: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
+    h_outline_merge_groups: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    h_outline_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     h_outline_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.h_outline_specific_on, set=lambda self, value: setattr(self, "h_outline_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, H_OUTLINE_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, H_OUTLINE_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     h_outline_brush_settings: bpy.props.StringProperty(
         default=H_OUTLINE_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(H_OUTLINE_SOCKET_ID),
         set=lambda self, val: None)
 
     # h object
-    h_object_on: bpy.props.BoolProperty(default=False)
-    h_object_open: bpy.props.BoolProperty(default=True)
-    h_object_specific_on: bpy.props.BoolProperty(default=False)
+    h_object_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    h_object_open: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
+    h_object_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     h_object_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.h_object_specific_on, set=lambda self, value: setattr(self, "h_object_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, H_OBJECT_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, H_OBJECT_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     h_object_brush_settings: bpy.props.StringProperty(
         default=H_OBJECT_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(H_OBJECT_SOCKET_ID),
         set=lambda self, val: None)
 
     # h intersection
-    h_intersection_on: bpy.props.BoolProperty(default=False)
-    h_intersection_self: bpy.props.BoolProperty(default=True)
-    h_intersection_specific_on: bpy.props.BoolProperty(default=False)
+    h_intersection_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    h_intersection_self: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
+    h_intersection_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     h_intersection_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.h_intersection_specific_on, set=lambda self, value: setattr(self, "h_intersection_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, H_INTERSECTION_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, H_INTERSECTION_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     h_intersection_brush_settings: bpy.props.StringProperty(
         default=H_INTERSECTION_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(H_INTERSECTION_SOCKET_ID),
         set=lambda self, val: None)
 
     # h smooth
-    h_smooth_on: bpy.props.BoolProperty(default=False)
-    h_smooth_specific_on: bpy.props.BoolProperty(default=False)
+    h_smooth_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    h_smooth_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     h_smooth_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.h_smooth_specific_on, set=lambda self, value: setattr(self, "h_smooth_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, H_SMOOTH_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, H_SMOOTH_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     h_smooth_brush_settings: bpy.props.StringProperty(
         default=H_SMOOTH_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(H_SMOOTH_SOCKET_ID),
         set=lambda self, val: None)
 
     # h material
-    h_material_on: bpy.props.BoolProperty(default=False)
-    h_material_specific_on: bpy.props.BoolProperty(default=False)
+    h_material_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    h_material_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     h_material_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.h_material_specific_on, set=lambda self, value: setattr(self, "h_material_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, H_MATERIAL_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, H_MATERIAL_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     h_material_brush_settings: bpy.props.StringProperty(
         default=H_MATERIAL_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(H_MATERIAL_SOCKET_ID),
         set=lambda self, val: None)
 
     # h selected
-    h_selected_on: bpy.props.BoolProperty(default=False)
-    h_selected_specific_on: bpy.props.BoolProperty(default=False)
+    h_selected_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    h_selected_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     h_selected_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.h_selected_specific_on, set=lambda self, value: setattr(self, "h_selected_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, H_SELECTED_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, H_SELECTED_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     h_selected_brush_settings: bpy.props.StringProperty(
         default=H_SELECTED_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(H_SELECTED_SOCKET_ID),
         set=lambda self, val: None)
 
     # h normal angle
-    h_normal_angle_on: bpy.props.BoolProperty(default=False)
-    h_normal_angle_specific_on: bpy.props.BoolProperty(default=False)
+    h_normal_angle_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    h_normal_angle_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     h_normal_angle_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.h_normal_angle_specific_on, set=lambda self, value: setattr(self, "h_normal_angle_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, H_NORMAL_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, H_NORMAL_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     h_normal_angle_brush_settings: bpy.props.StringProperty(
         default=H_NORMAL_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(H_NORMAL_SOCKET_ID),
         set=lambda self, val: None)
-    h_normal_angle_min: bpy.props.FloatProperty(default=0.25 * math.pi, min=0.0, max=math.pi, subtype="ANGLE")
-    h_normal_angle_max: bpy.props.FloatProperty(default=math.pi, min=0.0, max=math.pi, subtype="ANGLE")
+    h_normal_angle_min: bpy.props.FloatProperty(default=0.25 * math.pi, min=0.0, max=math.pi, subtype="ANGLE", override={'LIBRARY_OVERRIDABLE'})
+    h_normal_angle_max: bpy.props.FloatProperty(default=math.pi, min=0.0, max=math.pi, subtype="ANGLE", override={'LIBRARY_OVERRIDABLE'})
 
     # h wireframe
-    h_wireframe_on: bpy.props.BoolProperty(default=False)
-    h_wireframe_specific_on: bpy.props.BoolProperty(default=False)
+    h_wireframe_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    h_wireframe_specific_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     h_wireframe_specific_on_gui: bpy.props.BoolProperty(get=lambda self: self.h_wireframe_specific_on, set=lambda self, value: setattr(self, "h_wireframe_specific_on", value),
-        update=lambda self, ctx: self.specific_on_changed(ctx, H_WIREFRAME_SOCKET_ID))
+        update=lambda self, ctx: self.specific_on_changed(ctx, H_WIREFRAME_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     h_wireframe_brush_settings: bpy.props.StringProperty(
         default=H_WIREFRAME_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(H_WIREFRAME_SOCKET_ID),
         set=lambda self, val: None)
 
     # h size reduction
-    h_size_reduction_on: bpy.props.BoolProperty(default=False)
+    h_size_reduction_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     h_size_reduction_on_gui: bpy.props.BoolProperty(get=lambda self: self.h_size_reduction_on, set=lambda self, value: setattr(self, "h_size_reduction_on", value),
-        update=lambda self, ctx: self.auto_create_node_when_property_on(ctx, H_SIZE_REDUCTION_SOCKET_ID))
+        update=lambda self, ctx: self.auto_create_node_when_property_on(ctx, H_SIZE_REDUCTION_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     h_size_reduction_settings: bpy.props.StringProperty(
         default=H_SIZE_REDUCTION_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(H_SIZE_REDUCTION_SOCKET_ID),
         set=lambda self, val: None)
 
     # h alpha reduction
-    h_alpha_reduction_on: bpy.props.BoolProperty(default=False)
+    h_alpha_reduction_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     h_alpha_reduction_on_gui: bpy.props.BoolProperty(get=lambda self: self.h_alpha_reduction_on, set=lambda self, value: setattr(self, "h_alpha_reduction_on", value),
-        update=lambda self, ctx: self.auto_create_node_when_property_on(ctx, H_ALPHA_REDUCTION_SOCKET_ID))
+        update=lambda self, ctx: self.auto_create_node_when_property_on(ctx, H_ALPHA_REDUCTION_SOCKET_ID),
+        override={'LIBRARY_OVERRIDABLE'})
     h_alpha_reduction_settings: bpy.props.StringProperty(
         default=H_ALPHA_REDUCTION_SOCKET_ID,
         get=lambda self: self.filtered_socket_id(H_ALPHA_REDUCTION_SOCKET_ID),
@@ -351,7 +371,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
         #     new_obj.obj = obj
 
     def filtered_socket_id(self, id, context=None, depsgraph=None):
-        if id.endswith("_specific") and not getattr(self, id.removesuffix("_specific") + "_on", True):
+        if id.endswith("_specific") and not AttrOverride.get_overrided_attr(self, id.removesuffix("_specific") + "_on", True, context=context, depsgraph=depsgraph):
             return ""
         return super().filtered_socket_id(id, context=context, depsgraph=depsgraph)
 

@@ -107,8 +107,9 @@ class PCL4_PT_PencilLineList(PCL4_PT_PencilLineList_mixin, bpy.types.Panel):
             elif line_node.get_selected_lineset() is None and len(line_node.enumerate_input_nodes()) > 0:
                 do_reset_selecttion = True
             if do_reset_selecttion:
+                tree_ptr = str(tree.as_pointer())
                 bpy.app.timers.register(
-                    lambda: None if bpy.ops.pcl4.reset_node_selection(tree_ptr=str(tree.as_pointer())) else None,
+                    lambda: None if bpy.ops.pcl4.reset_node_selection(tree_ptr=tree_ptr) else None,
                     first_interval=0.0)
 
         # ラインリスト表示の選択とアクティブノードが異なる場合、ラインリスト表示選択の同期をタイマーにより実行する
@@ -127,8 +128,9 @@ class PCL4_PT_PencilLineList(PCL4_PT_PencilLineList_mixin, bpy.types.Panel):
                             do_sync = True
                             break
             if do_sync:
+                tree_ptr = str(tree.as_pointer())
                 bpy.app.timers.register(
-                    lambda: None if bpy.ops.pcl4.sync_node_selection(tree_ptr=str(tree.as_pointer())) else None,
+                    lambda: None if bpy.ops.pcl4.sync_node_selection(tree_ptr=tree_ptr) else None,
                     first_interval=0.0)
         
         return True

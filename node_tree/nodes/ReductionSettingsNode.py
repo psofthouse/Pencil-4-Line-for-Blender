@@ -15,11 +15,11 @@ class ReductionSettingsNode(bpy.types.Node, PencilNodeMixin):
     bl_label = "Reduction Settings"
     bl_icon = "GREASEPENCIL"
 
-    reduction_start: bpy.props.FloatProperty(default=1.0, min=0.01, max=100000.0, soft_min=0.01, soft_max=100.0, subtype="DISTANCE")
-    reduction_end: bpy.props.FloatProperty(default=10.0, min=0.01, max=100000.0, soft_min=0.01, soft_max=100.0, subtype="DISTANCE")
+    reduction_start: bpy.props.FloatProperty(default=1.0, min=0.01, max=100000.0, soft_min=0.01, soft_max=100.0, subtype="DISTANCE", override={'LIBRARY_OVERRIDABLE'})
+    reduction_end: bpy.props.FloatProperty(default=10.0, min=0.01, max=100000.0, soft_min=0.01, soft_max=100.0, subtype="DISTANCE", override={'LIBRARY_OVERRIDABLE'})
     curve: bpy.props.StringProperty(default="")
-    refer_object_on: bpy.props.BoolProperty(default=False)
-    object_reference: bpy.props.PointerProperty(type=bpy.types.Object)
+    refer_object_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
+    object_reference: bpy.props.PointerProperty(type=bpy.types.Object, override={'LIBRARY_OVERRIDABLE'})
 
     def init(self, context):
         super().init()
