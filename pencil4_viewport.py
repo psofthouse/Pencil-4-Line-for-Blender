@@ -20,6 +20,8 @@ else:
             from .bin import pencil4line_for_blender_win64_39 as pencil4line_for_blender
         elif sys.version_info.major == 3 and sys.version_info.minor == 10:
             from .bin import pencil4line_for_blender_win64_310 as pencil4line_for_blender
+        elif sys.version_info.major == 3 and sys.version_info.minor == 11:
+            from .bin import pencil4line_for_blender_win64_311 as pencil4line_for_blender
     elif platform.system() == "Darwin":
         if sys.version_info.major == 3 and sys.version_info.minor == 9:
             from .bin import pencil4line_for_blender_mac_39 as pencil4line_for_blender
@@ -352,6 +354,7 @@ class ViewportLineRenderManager:
                     tex = gpu.types.GPUTexture((width, height), data=pixels)
                     gpu.state.blend_set("ALPHA")
                     __class__.__draw_texture(space, tex)
+                    del tex
 
     @staticmethod
     def __create_shader(vertex_source:str,
@@ -462,6 +465,8 @@ class ViewportLineRenderManager:
             shader.uniform_float("isNone", 1.0)
         else:
             display_device = bpy.context.scene.display_settings.display_device
+            if not display_device in ("sRGB", "XYZ", "None"):
+                display_device = "sRGB"
             shader.uniform_float("isSRGB", 1.0 if display_device == "sRGB" else 0.0)
             shader.uniform_float("isXYZ", 1.0 if display_device == "XYZ" else 0.0)
             shader.uniform_float("isNone", 1.0 if display_device == "None" else 0.0)
@@ -577,13 +582,17 @@ class PCL4_PT_ViewportLinePreview(bpy.types.Panel):
         mode = ViewportLineRenderManager.get_render_session_mode(context.space_data) if settings is not None else 0
         if mode < 0:
             layout.alert = True
-            is_timeouted = mode == ViewportLineRenderManager.RenderMode.Timeout
-            layout.label(text="Timeout" if is_timeouted else "Error", icon="ERROR", translate=False)
-            if is_timeouted:
-                layout.operator("pcl4.show_preferences", icon="PREFERENCES", text="Adjust Timeout Period", text_ctxt=Translation.ctxt)
+            if pencil4_render_session.get_dll_valid():
+                is_timeouted = mode == ViewportLineRenderManager.RenderMode.Timeout
+                layout.label(text="Timeout" if is_timeouted else "Error", icon="ERROR", translate=False)
+                if is_timeouted:
+                    layout.operator("pcl4.show_preferences", icon="PREFERENCES", text="Adjust Timeout Period", text_ctxt=Translation.ctxt)
+                else:
+                    layout.operator("pcl4.show_preferences", icon="PREFERENCES")
+                layout.operator(PCL4_OT_RetryViewportLineRender.bl_idname, icon="FILE_REFRESH")
             else:
-                layout.operator("pcl4.show_preferences", icon="PREFERENCES")
-            layout.operator(PCL4_OT_RetryViewportLineRender.bl_idname, icon="FILE_REFRESH")
+                layout.label(text="Add-on install error", icon="ERROR", text_ctxt=Translation.ctxt)
+                layout.operator("pcl4.show_preferences", icon="PREFERENCES", text="Show Details", text_ctxt=Translation.ctxt)
             layout.alert = False
             layout.separator()
         enable = settings is not None and settings.enable
@@ -778,11 +787,13 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                                 tex.clear(format="FLOAT", value=self.background_color)
                                 gpu.state.blend_set("ALPHA")
                                 draw_texture_2d(tex, (-1, -1), 2, 2)
+                                del tex
                             if len(self.session.get_viewport_image_buffer()) == width * height * 4:
                                 pixels = gpu.types.Buffer("FLOAT", width * height * 4, self.session.get_viewport_image_buffer())
                                 tex = gpu.types.GPUTexture((width, height), data=pixels)
                                 gpu.state.blend_set("ALPHA_PREMULT")
                                 draw_texture_2d(tex, (-1, -1), 2, 2)
+                                del tex
                     buffer = fb.read_color(0, 0, width, height, 4, 0, 'FLOAT')
                 offscreen.free()
                 buffer.dimensions = width * height * 4

@@ -61,6 +61,10 @@ def copy_props(py_instance, cpp_instance, instance_dict=None, depsgraph: bpy.typ
             setattr(cpp_instance, prop_name, py_value)
         # object
         elif cpp_type is type(None) and py_type is bpy.types.Object:
+            if depsgraph is not None:
+                eval_object = depsgraph.id_eval_get(py_value)
+                if eval_object is not None:
+                    py_value = eval_object
             setattr(cpp_instance, prop_name, py_value)
         # objects or materials
         elif cpp_type is list and py_type.__name__ == "bpy_prop_collection_idprop":

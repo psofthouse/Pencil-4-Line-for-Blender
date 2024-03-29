@@ -13,6 +13,7 @@ from ...i18n import Translation
 from ..nodes.PencilNodeMixin import PencilNodeMixin
 from ..misc.GuiUtils import layout_prop
 from ..misc import AttrOverride
+from ... import pencil4_render_session
 
 class PCL4_UL_LineListView(bpy.types.UIList):
     has_ovveride: bpy.props.BoolProperty(default=False)
@@ -201,6 +202,12 @@ class PCL4_PT_PencilLineList(PCL4_PT_PencilLineList_mixin, bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
+        if not pencil4_render_session.get_dll_valid():
+            layout.alert = True
+            layout.label(text="Add-on install error", icon="ERROR", text_ctxt=Translation.ctxt)
+            layout.operator("pcl4.show_preferences", icon="PREFERENCES", text="Show Details", text_ctxt=Translation.ctxt)
+            layout.alert = False
+            layout.separator(factor=2.0)
 
         tree = PencilNodeTree.tree_from_context(context)
         if tree is None:

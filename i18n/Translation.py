@@ -437,5 +437,14 @@ translation_dict = {
             "2. 全てのBlenderプロセスを終了する。",
         (ctxt, "3. Delete all the items in the Pencil+ 4 Line add-on folder."):
             "3. Pencil+ 4 Line アドオン フォルダー内の全ての項目を削除する。",
+
+        (ctxt, "Show Details"):
+            "詳細を表示",
+        (ctxt, "The add-on is not properly installed."):
+            "アドオンが正しくインストールされていません。",
+        (ctxt, "Please reinstall the add-on."):
+            "アドオンを再インストールしてください。",
+        (ctxt, "If the installation fails, try removing the add-on following the steps below."):
+            "インストールに失敗する場合は、以下の手順に従ってアドオンを削除してください。",
     }
 }

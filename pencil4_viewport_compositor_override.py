@@ -17,7 +17,7 @@ class Manager:
         use_compositor = getattr(bpy.context.space_data.shading, "use_compositor", "DISABLED")
         if use_compositor == "DISABLED" or type(use_compositor) is bool:
             return
-        depsgraph = bpy.context.evaluated_depsgraph_get()
+        depsgraph = bpy.context.view_layer.depsgraph
         if depsgraph is None:
             return
         scene = depsgraph.scene_eval

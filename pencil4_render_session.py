@@ -15,6 +15,8 @@ else:
             from .bin import pencil4line_for_blender_win64_39 as pencil4line_for_blender
         elif sys.version_info.major == 3 and sys.version_info.minor == 10:
             from .bin import pencil4line_for_blender_win64_310 as pencil4line_for_blender
+        elif sys.version_info.major == 3 and sys.version_info.minor == 11:
+            from .bin import pencil4line_for_blender_win64_311 as pencil4line_for_blender
     elif platform.system() == "Darwin":
         if sys.version_info.major == 3 and sys.version_info.minor == 9:
             from .bin import pencil4line_for_blender_mac_39 as pencil4line_for_blender
@@ -27,7 +29,11 @@ from .node_tree.misc.DataUtils import line_object_types
 
 import bpy
 import itertools
+import os
 
+_dll_valid = False
+def get_dll_valid():
+    return _dll_valid
 
 def show_render_error(message = ""):
     print( f"Pencil+ 4 Line Render Error : {message}")
@@ -144,6 +150,11 @@ class Pencil4RenderSession:
                 pencil4_render_images.reset_image(i)
             self.__interm_context.clear_viewport_image_buffer()
             return pencil4line_for_blender.draw_ret.success
+        
+        # DLLが有効でなければライン描画せず終了
+        if not _dll_valid:
+            print("Pencil+ 4 Line Render Error : DLL is not valid.")
+            return pencil4line_for_blender.draw_ret.error_unknown
 
         # 
         is_viewport = viewport_camera is not None
@@ -335,3 +346,12 @@ def flatten_hierarchy(o):
     yield o
     for child in o.children:
         yield from flatten_hierarchy(child)
+
+
+def register():
+    global _dll_valid
+    _dll_valid = False
+    if hasattr(pencil4line_for_blender, "get_commit_hash"):
+        with open(os.path.join(os.path.dirname(os.path.abspath(pencil4line_for_blender.__file__)), "commitHash.txt"), 'r', encoding='utf-8') as file:
+            if file.read().strip() == pencil4line_for_blender.get_commit_hash():
+                _dll_valid = True

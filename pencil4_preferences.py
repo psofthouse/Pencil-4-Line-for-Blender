@@ -5,8 +5,10 @@
 if "bpy" in locals():
     import imp
     imp.reload(Translation)
+    imp.reload(pencil4_render_session)
 else:
     from .i18n import Translation
+    from . import pencil4_render_session
 
 import bpy
 import os
@@ -30,8 +32,13 @@ class PCL4_Preferences(bpy.types.AddonPreferences):
         box = layout.box()
         col = box.column(align=True)
         col.alert = True
-        col.label(text="If deleting or uninstalling the add-on fails,", text_ctxt=Translation.ctxt, icon='ERROR')
-        col.label(text="please try the following.", text_ctxt=Translation.ctxt, icon='BLANK1')
+        if pencil4_render_session.get_dll_valid():
+            col.label(text="If deleting or uninstalling the add-on fails,", text_ctxt=Translation.ctxt, icon='ERROR')
+            col.label(text="please try the following.", text_ctxt=Translation.ctxt, icon='BLANK1')
+        else:
+            col.label(text="The add-on is not properly installed.", icon="ERROR", text_ctxt=Translation.ctxt)
+            col.label(text="Please reinstall the add-on.", icon="BLANK1", text_ctxt=Translation.ctxt)
+            col.label(text="If the installation fails, try removing the add-on following the steps below.", icon="BLANK1", text_ctxt=Translation.ctxt)
 
         box.separator(factor=0.25)
 
