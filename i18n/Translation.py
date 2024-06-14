@@ -63,6 +63,10 @@ translation_dict = {
             "オブジェクトを追加",
         (ctxt, "Remove Objects"):
             "オブジェクトを削除",
+        (ctxt, "Add"):
+            "追加",
+        (ctxt, "Remove"):
+            "削除",
         (ctxt, "Add Materials"):
             "マテリアルを追加",
         (ctxt, "Remove Materials"):
@@ -81,6 +85,8 @@ translation_dict = {
             "インデックス",
         (ctxt, "Name"):
             "名前",
+        (ctxt, "Default"):
+            "デフォルト",
 
         # Line Node
         (ctxt, "Line"):
@@ -310,6 +316,8 @@ translation_dict = {
             "タイリング U",
         (ctxt, "Offset U"):
             "オフセット U",
+        (ctxt, "Rotation"):
+            "回転",
         ("*", "Object UV"):
             "オブジェクト UV",
         (ctxt, "Color Attribute"):
@@ -396,8 +404,14 @@ translation_dict = {
             "ライン プレビュー",
         (ctxt, "Adjust Timeout Period"):
             "タイムアウト時間の調整",
-        (ctxt, "Camera View Option"):
+        (ctxt, "Camera View Options"):
             "カメラビュー オプション",
+        (ctxt, "Range"):
+            "範囲",
+        ("*", "Whole Viewport"):
+            "ビューポート全体",
+        ("*", "Camera Area"):
+            "カメラ領域",
         (ctxt, "Line Size Adjustment"):
             "ラインサイズ調整",
         (ctxt, "Viewport Render"):
@@ -446,5 +460,15 @@ translation_dict = {
             "アドオンを再インストールしてください。",
         (ctxt, "If the installation fails, try removing the add-on following the steps below."):
             "インストールに失敗する場合は、以下の手順に従ってアドオンを削除してください。",
+        
+        # Presets
+        (ctxt, "Brush Presets"):
+            "ブラシプリセット",
+        (ctxt, "Stroke Presets"):
+            "ストロークプリセット",
+        (ctxt, "Add Pencil+ 4 Brush Preset"):
+            "Pencil+ 4 ブラシプリセットを追加",
+        (ctxt, "Add Pencil+ 4 Stroke Preset"):
+            "Pencil+ 4 ストロークプリセットを追加",
     }
 }

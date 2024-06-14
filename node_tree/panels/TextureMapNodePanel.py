@@ -83,6 +83,9 @@ class PCL4_PT_texture_map_image_uv(PCL4_PT_brush_detail_mixin, bpy.types.Panel):
         layout_prop(context, col, node, "offset", index=0, text="Offset U", text_ctxt=Translation.ctxt)
         layout_prop(context, col, node, "offset", index=1, text="V", text_ctxt=Translation.ctxt)
 
+        col = layout.column(align=True)
+        layout_prop(context, col, node, "rotation", text="Rotation", text_ctxt=Translation.ctxt)
+
 
 class PCL4_PT_texture_map_object_color(PCL4_PT_brush_detail_mixin, bpy.types.Panel):
     bl_label = "Color Attribute"

@@ -6,6 +6,7 @@ from cgitb import text
 import bpy
 from ..nodes.BrushDetailNode import BrushDetailNode
 from ..PencilNodeTree import PencilNodeTree
+from .. import PencilNodePreset
 from ..misc import GuiUtils
 from ..misc.GuiUtils import layout_prop
 from ..misc.AttrOverride import get_overrided_attr
@@ -54,6 +55,8 @@ class PCL4_PT_brush_detail_brush_editor(PCL4_PT_brush_detail_mixin, bpy.types.Pa
         layout.use_property_decorate = False
         layout.enabled = PencilNodeTree.tree_from_context(context).is_entity()
         node = context.active_node
+
+        PencilNodePreset.layout_brush_preset(layout)
 
         GuiUtils.enum_property(layout, node, "brush_type", BrushDetailNode.brush_type_items, text="Brush Type")
         type = get_overrided_attr(node, "brush_type", context=context, default="SIMPLE")
@@ -105,6 +108,8 @@ class PCL4_PT_brush_detail_stroke(PCL4_PT_brush_detail_mixin, bpy.types.Panel):
         layout.use_property_decorate = False
         layout.enabled = PencilNodeTree.tree_from_context(context).is_entity()
         node = context.active_node
+
+        PencilNodePreset.layout_stroke_preset(layout)
 
         def prop(prop_name, label_text):
             layout_prop(context, col, node, prop_name, text=label_text, text_ctxt=Translation.ctxt)

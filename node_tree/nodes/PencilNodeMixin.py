@@ -130,6 +130,33 @@ class PencilNodeMixin:
         tree = self.tree_from_node()
         return PencilCurves.evaluate_curve(
             tree.curve_node_tree if tree is not None else None, curve_name, length)
+    
+    def get_curve_points_string(self, curve_name) -> str:
+        curve = self.get_curve_data(curve_name)
+        if curve is None:
+            return ""
+        return ";".join(f"{point.location[0]},{point.location[1]},{point.handle_type}" for point in curve.mapping.curves[0].points)
+    
+    def set_curve_points_string(self, curve_name, points_str: str):
+        curve_points = [x for x in points_str.split(";")]
+        if len(curve_points) < 2:
+            return
+        curve = self.get_curve_data(curve_name)
+        if curve is None:
+            return
+        blender_points = curve.mapping.curves[0].points
+        for _ in itertools.repeat(None, len(blender_points) - 2):
+            blender_points.remove(blender_points[0])
+        for i, point in enumerate(curve_points):
+            point = point.split(",")
+            if i < 2:
+                blender_points[i].location[0] = float(point[0])
+                blender_points[i].location[1] = float(point[1])
+                blender_points[i].handle_type = point[2] if len(point) == 3 else "AUTO"
+            else:
+                blender_points.new(float(point[0]), float(point[1]))
+                blender_points[i].handle_type = point[2] if len(point) == 3 else "AUTO"
+        curve.mapping.update()
 
     def get_overrided_attr(self, prop_name, default=None, context=None, depsgraph=None) -> any:
         return AttrOverride.get_overrided_attr(self, prop_name, default=default, context=context, depsgraph=depsgraph)

@@ -130,10 +130,16 @@ class BrushDetailNode(bpy.types.Node, PencilNodeMixin):
     # Size Reduction
     size_reduction_enabled: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     size_reduction_curve: bpy.props.StringProperty(default="", override={'LIBRARY_OVERRIDABLE'})
-
+    size_reduction_curve_data_str: bpy.props.StringProperty(default="0.0,0.25,AUTO;0.5,1.0,AUTO;1.0,0.25,AUTO",
+                                                            get=lambda self: self.get_curve_points_string(self.size_reduction_curve),
+                                                            set=lambda self,value: self.set_curve_points_string(self.size_reduction_curve, value))
+    
     # Alpha Reduction
     alpha_reduction_enabled: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
     alpha_reduction_curve: bpy.props.StringProperty(default="", override={'LIBRARY_OVERRIDABLE'})
+    alpha_reduction_curve_data_str: bpy.props.StringProperty(default="0.0,0.25,AUTO;0.5,1.0,AUTO;1.0,0.25,AUTO",
+                                                             get=lambda self: self.get_curve_points_string(self.alpha_reduction_curve),
+                                                             set=lambda self,value: self.set_curve_points_string(self.alpha_reduction_curve, value))
 
     color_space_type: bpy.props.EnumProperty(items=color_space_items, default="RGB", override={'LIBRARY_OVERRIDABLE'})
     color_space_red: bpy.props.FloatProperty(default=0.0, min=0.0, max=1.0, override={'LIBRARY_OVERRIDABLE'})

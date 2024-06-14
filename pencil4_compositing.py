@@ -263,12 +263,12 @@ class PCL4_PT_VectorOutput(bpy.types.Panel):
             rows=3, maxrows=3)
 
         row2 = col2.row(align=True)
-        new_output_button = row2.operator("pcl4.new_vector_output", text="Add")
+        new_output_button = row2.operator("pcl4.new_vector_output", text="Add", text_ctxt=Translation.ctxt)
         new_output_button.node_ptr = str(node.as_pointer())
         row2 = row2.row()
         row2.enabled = 0 <= outputs.vector_output_selected_index and\
             outputs.vector_output_selected_index < len(outputs.vector_outputs)
-        remove_output_button = row2.operator("pcl4.remove_vector_output", text="Remove")
+        remove_output_button = row2.operator("pcl4.remove_vector_output", text="Remove", text_ctxt=Translation.ctxt)
         remove_output_button.node_ptr = str(node.as_pointer())
 
         split = split.split(factor=1.0)

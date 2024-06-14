@@ -22,10 +22,7 @@ class Manager:
             return
         scene = depsgraph.scene_eval
         if scene.use_nodes and scene.node_tree:
-            main_image, element_dict = pencil4_render_images.enumerate_images_from_compositor_nodes(depsgraph.view_layer)
-            images = set(element_dict.keys())
-            images.add(main_image)
-            for node in (node for node in scene.node_tree.nodes if node.type == "IMAGE" and node.image in images):
+            for node in pencil4_render_images.iterate_all_pencil_image_nodes(scene.node_tree):
                 if not node.mute:
                     node.mute = True
                 for l in node.outputs[0].links:

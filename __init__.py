@@ -4,9 +4,9 @@
 bl_info = {
     "name": "PSOFT Pencil+ 4 Line",
     "author": "P SOFTHOUSE",
-    "description": "High-quality lines in Blender [3904d477]",
+    "description": "High-quality lines in Blender [56a71d63]",
     "blender": (3, 0, 0),
-    "version": (4, 0, 8),
+    "version": (4, 1, 0),
     "location": "",
     "warning": "",
     "category": "Generic",
@@ -58,12 +58,13 @@ def register():
     merge_helper.register_menu()
     pencil4_viewport.register_props()
 
-    if not os.path.isfile(bpy.context.preferences.addons[__package__].preferences.render_app_path):
-        bpy.context.preferences.addons[__package__].preferences.render_app_path = ""
-    if bpy.context.preferences.addons[__package__].preferences.render_app_path == "":
-        data = None
-        regtype = None
-        if platform.system() == "Windows":
+    render_app_path = bpy.context.preferences.addons[__package__].preferences.render_app_path
+    if platform.system() == "Windows":
+        if not os.path.isfile(render_app_path):
+            render_app_path = ""
+        if render_app_path == "":
+            data = None
+            regtype = None
             try:
                 import winreg
                 key = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER, r"SOFTWARE\PSOFT\Pencil+ 4 Render App")
@@ -73,8 +74,15 @@ def register():
                 pass
             finally:
                 if data is not None and regtype == winreg.REG_SZ:
-                    bpy.context.preferences.addons[__package__].preferences.render_app_path = data
-
+                    render_app_path = data
+    elif platform.system() == "Darwin":
+        if not os.path.isdir(render_app_path) or not render_app_path.endswith(".app"):
+            render_app_path = ""
+        if render_app_path == "":
+            if os.path.isdir("/Applications/PSOFT Pencil+ 4 Render App.app"):
+                render_app_path = "/Applications/PSOFT Pencil+ 4 Render App.app"
+    bpy.context.preferences.addons[__package__].preferences.render_app_path = render_app_path
+    
     if not bpy.app.background:
         bpy.app.timers.register(update_after_addon_loaded, first_interval=0.0)
 

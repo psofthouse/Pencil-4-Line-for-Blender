@@ -6,6 +6,7 @@ import bpy
 from ..nodes.LineNode import LineNode
 from ..nodes.LineSetNode import LineSetNode
 from ..nodes.BrushSettingsNode import BrushSettingsNode
+from ..nodes.BrushDetailNode import BrushDetailNode
 from ..PencilNodeTree import PencilNodeTree
 from . import LineNodePanel
 from ..misc.NamedRNAStruct import NamedRNAStruct
@@ -14,6 +15,7 @@ from ..nodes.PencilNodeMixin import PencilNodeMixin
 from ..misc.GuiUtils import layout_prop
 from ..misc import AttrOverride
 from ... import pencil4_render_session
+from ..PencilNodePreview import PreviewManager
 
 class PCL4_UL_LineListView(bpy.types.UIList):
     has_ovveride: bpy.props.BoolProperty(default=False)
@@ -71,8 +73,6 @@ class PCL4_PT_PencilLineList(PCL4_PT_PencilLineList_mixin, bpy.types.Panel):
     bl_options = {"HIDE_HEADER"}
     bl_label = ""
     bl_order = 0
-
-    preferred_show_nodes = list()
 
     @classmethod
     def poll(cls, context):
@@ -133,62 +133,14 @@ class PCL4_PT_PencilLineList(PCL4_PT_PencilLineList_mixin, bpy.types.Panel):
                 bpy.app.timers.register(
                     lambda: None if bpy.ops.pcl4.sync_node_selection(tree_ptr=tree_ptr) else None,
                     first_interval=0.0)
-        
+        PreviewManager.validate_cache(tree, context)
         return True
 
     def draw_switch_buttons(self, context, layout):
         tree = PencilNodeTree.tree_from_context(context)
+        nodes = tree.get_node_hierarchy_in_panel()
         active_node = context.active_node if isinstance(context.active_node, PencilNodeMixin) else None
-        show_node_panel = tree.show_node_panel
-
-        nodes = [None]
-        preferred_show_nodes = list(__class__.preferred_show_nodes)
-
-        if show_node_panel and active_node is not None:
-            # アクティブノードのパネルを表示する場合、選択可能な親ノードのボタンも表示する
-            if active_node in preferred_show_nodes:
-                nodes.extend(preferred_show_nodes)
-            else:
-                for parent in active_node.find_connected_to_nodes():
-                    if parent in preferred_show_nodes:
-                        for preferred_show_node in preferred_show_nodes:
-                            nodes.append(preferred_show_node)
-                            if preferred_show_node == parent:
-                                break
-                        nodes.append(active_node)
-                        break
-                
-                if nodes[-1] != active_node:
-                    auto_detect = [active_node]
-                    while True:
-                        parents = auto_detect[-1].find_connected_to_nodes()
-                        if not parents:
-                            break
-                        parent = parents[0]
-                        if isinstance(parent, LineNode) or isinstance(parent, LineSetNode):
-                            break
-                        auto_detect.append(parent)
-
-                    nodes.extend(reversed(auto_detect))
-        else:
-            # ラインリストを表示する場合、選択中のラインセットのボタンを表示する
-            line_node = tree.get_selected_line()
-            lineset_node = line_node.get_selected_lineset() if line_node is not None else None
-            if lineset_node is not None:
-                brush_settings_socket_name = "v_brush" if tree.show_visible_lines else "h_brush"
-                brush_settings = \
-                    next(x for x in lineset_node.inputs if x.identifier == brush_settings_socket_name) \
-                    .get_connected_node()
-                if brush_settings is not None:
-                    nodes.append(brush_settings)
-            
-        if isinstance(nodes[-1], BrushSettingsNode):
-            child = nodes[-1].find_connected_from_node(nodes[-1].brush_detail_node)
-            if child is not None:
-                nodes.append(child)
-
-        selected_node = active_node if show_node_panel else None
-
+        selected_node = active_node if tree.show_node_panel else None
         layout.alignment = "LEFT"
         for i, node in enumerate(nodes):
             op = layout.operator("pcl4.activate_node",
@@ -238,9 +190,9 @@ class PCL4_PT_PencilLineList(PCL4_PT_PencilLineList_mixin, bpy.types.Panel):
 
         row2 = left_col.row(align=True)
         left_col = row2.column()
-        left_col.operator("pcl4.line_list_new_item", text="Add")
+        left_col.operator("pcl4.line_list_new_item", text="Add", text_ctxt=Translation.ctxt)
         right_col = row2.column()
-        right_col.operator("pcl4.line_list_remove_item", text="Remove")
+        right_col.operator("pcl4.line_list_remove_item", text="Remove", text_ctxt=Translation.ctxt)
         right_col.enabled = tree.get_selected_line() is not None
 
         split = split.split(factor=1.0)
@@ -388,23 +340,17 @@ class PCL4_OT_LineListMoveItemOperator(bpy.types.Operator):
 class PCL4_OT_ActivateNode(bpy.types.Operator):
     bl_idname = "pcl4.activate_node"
     bl_label = "Activate Node"
+    bl_options = {'REGISTER', 'UNDO'}
 
     node: bpy.props.PointerProperty(type=NamedRNAStruct)
     preferred_parent_node: bpy.props.PointerProperty(type=NamedRNAStruct)
-
-    def set_active_node(self, context):
-        tree = PencilNodeTree.tree_from_context(context)
-        tree.nodes.active = self.node.get_node(context)
 
     def execute(self, context: bpy.context):
         tree = PencilNodeTree.tree_from_context(context)
         if tree is None:
             return {"CANCELLED"}
-        self.set_active_node(context)
-
-        parent = self.preferred_parent_node.get_node(context)
-        PCL4_PT_PencilLineList.preferred_show_nodes = list() if parent is None else [parent]
-
+        tree.nodes.active = self.node.get_node(context)
+        tree.preferred_parent_node_in_panel.set(self.preferred_parent_node.get_node(context))
         return {"FINISHED"}
 
 def select_tree(tree, context, space_node_editor_ptr):

@@ -9,6 +9,7 @@ if "bpy" in locals():
     import imp
     imp.reload(pencil4line_for_blender)
     imp.reload(pencil4_render_images)
+    imp.reload(cpp_ulits)
 else:
     if platform.system() == "Windows":
         if sys.version_info.major == 3 and sys.version_info.minor == 9:
@@ -22,7 +23,17 @@ else:
             from .bin import pencil4line_for_blender_mac_39 as pencil4line_for_blender
         elif sys.version_info.major == 3 and sys.version_info.minor == 10:
             from .bin import pencil4line_for_blender_mac_310 as pencil4line_for_blender
+        elif sys.version_info.major == 3 and sys.version_info.minor == 11:
+            from .bin import pencil4line_for_blender_mac_311 as pencil4line_for_blender
+    elif platform.system() == "Linux":
+        if sys.version_info.major == 3 and sys.version_info.minor == 9:
+            from .bin import pencil4line_for_blender_linux_39 as pencil4line_for_blender
+        elif sys.version_info.major == 3 and sys.version_info.minor == 10:
+            from .bin import pencil4line_for_blender_linux_310 as pencil4line_for_blender
+        elif sys.version_info.major == 3 and sys.version_info.minor == 11:
+            from .bin import pencil4line_for_blender_linux_311 as pencil4line_for_blender
     from . import pencil4_render_images
+    from .misc import cpp_ulits
 
 from .node_tree import PencilNodeTree
 from .node_tree.misc.DataUtils import line_object_types
@@ -94,8 +105,11 @@ class Pencil4RenderSession:
                 show_render_error(ret)
 
                 if bpy.context.preferences.addons[__package__].preferences.abort_rendering_if_error_occur:
-                    import ctypes
-                    ctypes.windll.user32.keybd_event(0x1B)
+                    if platform.system() == "Windows":
+                        import ctypes
+                        ctypes.windll.user32.keybd_event(0x1B)
+                    elif platform.system() == "Darwin":
+                        pencil4line_for_blender.simulate_esc_key_press()
                     show_render_error("Rendering aborted.")
                 
             return ret
@@ -279,9 +293,9 @@ class Pencil4RenderSession:
 
         # 描画
         pencil4line_for_blender.set_blender_version(bpy.app.version[0], bpy.app.version[1], bpy.app.version[2])
+        pencil4line_for_blender.set_render_app_path(bpy.context.preferences.addons[__package__].preferences.render_app_path)
 
         material_override = depsgraph.view_layer_eval.material_override if depsgraph.scene.render.engine == "CYCLES" else None
-        self.__interm_context.render_app_path = bpy.context.preferences.addons[__package__].preferences.render_app_path
 
         if mesh_color_attributes is None:
             self.__interm_context.mesh_color_attributes_on = False
@@ -346,6 +360,38 @@ def flatten_hierarchy(o):
     yield o
     for child in o.children:
         yield from flatten_hierarchy(child)
+
+
+def create_previews(preview_size: int,
+                    stroke_preview_width: int,
+                    brush_detail_node,
+                    stroke_preview_brush_size: float,
+                    stroke_preview_scale: float,
+                    color: tuple[float, float, float, float],
+                    bg_color: tuple[float, float, float, float],
+                    hash_prev):
+    error_ret = (None, None, None)
+    # DLLが有効でなければ描画せず終了
+    if not _dll_valid:
+        return error_ret
+    
+    if brush_detail_node is None:
+        return error_ret
+    node_dict = {brush_detail_node: pencil4line_for_blender.brush_detail_node()}
+    if brush_detail_node.filtered_socket_id("brush_map", context=bpy.context) != "":
+        brush_map_node = brush_detail_node.find_connected_from_node("brush_map")
+        if brush_map_node is not None:
+            node_dict[brush_map_node] = pencil4line_for_blender.texture_map_node()
+        
+    for py_node, cpp_node in node_dict.items():
+        cpp_ulits.copy_props(py_node, cpp_node, node_dict, context=bpy.context)
+
+    pencil4line_for_blender.set_blender_version(bpy.app.version[0], bpy.app.version[1], bpy.app.version[2])
+    pencil4line_for_blender.set_render_app_path(bpy.context.preferences.addons[__package__].preferences.render_app_path)
+    return pencil4line_for_blender.create_previews(preview_size, stroke_preview_width,
+                                                   node_dict[brush_detail_node],
+                                                   stroke_preview_brush_size, stroke_preview_scale,
+                                                   color, bg_color, hash_prev)
 
 
 def register():

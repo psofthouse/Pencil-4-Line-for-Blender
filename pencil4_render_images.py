@@ -14,6 +14,8 @@ import re
 from typing import Tuple
 import bpy
 import itertools
+from typing import Iterable
+
 
 if platform.system() == "Windows":
     if sys.version_info.major == 3 and sys.version_info.minor == 9:
@@ -27,6 +29,15 @@ elif platform.system() == "Darwin":
         from .bin import pencil4line_for_blender_mac_39 as cpp
     elif sys.version_info.major == 3 and sys.version_info.minor == 10:
         from .bin import pencil4line_for_blender_mac_310 as cpp
+    elif sys.version_info.major == 3 and sys.version_info.minor == 11:
+        from .bin import pencil4line_for_blender_mac_311 as cpp
+elif platform.system() == "Linux":
+    if sys.version_info.major == 3 and sys.version_info.minor == 9:
+        from .bin import pencil4line_for_blender_linux_39 as cpp
+    elif sys.version_info.major == 3 and sys.version_info.minor == 10:
+        from .bin import pencil4line_for_blender_linux_310 as cpp
+    elif sys.version_info.major == 3 and sys.version_info.minor == 11:
+        from .bin import pencil4line_for_blender_linux_311 as cpp
 
 
 IMAGE_NAME_PREFIX = "Pencil+ 4."
@@ -286,6 +297,16 @@ def reset_image(image: bpy.types.Image):
     else:
         image.pixels = [0] * (image.size[0] * image.size[1] * 4)
 
+
+def iterate_all_pencil_image_nodes(node_tree: bpy.types.NodeTree) -> Iterable[bpy.types.Node]:
+    for node in node_tree.nodes:
+        if node.type == "IMAGE" and node.image is not None:
+            for view_layer in itertools.chain.from_iterable(scene.view_layers for scene in bpy.data.scenes):
+                if (view_layer.pencil4_line_outputs.contains_in_render_elements(node.image) or
+                    view_layer.pencil4_line_outputs.output.main == node.image):
+                    yield node
+                    break
+    
 
 def enumerate_images_from_compositor_nodes(view_layer: bpy.types.ViewLayer, check_image_size: Tuple[int, int] = None) -> Tuple[bpy.types.Image, dict[bpy.types.Image, cpp.line_render_element]]:
     main_image = None

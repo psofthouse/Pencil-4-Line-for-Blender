@@ -109,6 +109,15 @@ class PencilNodeTree(bpy.types.NodeTree):
                 from ..bin import pencil4line_for_blender_mac_39 as cpp
             elif sys.version_info.major == 3 and sys.version_info.minor == 10:
                 from ..bin import pencil4line_for_blender_mac_310 as cpp
+            elif sys.version_info.major == 3 and sys.version_info.minor == 11:
+                from ..bin import pencil4line_for_blender_mac_311 as cpp
+        elif platform.system() == "Linux":
+            if sys.version_info.major == 3 and sys.version_info.minor == 9:
+                from ..bin import pencil4line_for_blender_linux_39 as cpp
+            elif sys.version_info.major == 3 and sys.version_info.minor == 10:
+                from ..bin import pencil4line_for_blender_linux_310 as cpp
+            elif sys.version_info.major == 3 and sys.version_info.minor == 11:
+                from ..bin import pencil4line_for_blender_linux_311 as cpp
 
         # C++側に渡すためのノードのインスタンスを生成
         node_dict = {}
@@ -211,10 +220,43 @@ class PencilNodeTree(bpy.types.NodeTree):
         return True
 
     show_node_panel: bpy.props.BoolProperty(get=get_show_node_panel)
+    preferred_parent_node_in_panel: bpy.props.PointerProperty(type=NamedRNAStruct)
 
+    @staticmethod
     def show_node_params(context):
         tree = PencilNodeTree.tree_from_context(context)
         return tree is not None and tree.show_node_panel
+    
+    def get_node_hierarchy_in_panel(self) -> list:
+        nodes = [None]
+        active_node = self.nodes.active if isinstance(self.nodes.active, PencilNodeMixin) else None
+        if self.show_node_panel and active_node is not None:
+            # アクティブノードのパネルを表示する場合、選択可能な親ノードのボタンも表示する
+            preferred_show_node = self.preferred_parent_node_in_panel.get_node(self.nodes)
+            if active_node != preferred_show_node:
+                parents = active_node.find_connected_to_nodes()
+                parent = next((x for x in parents if x == preferred_show_node), None)
+                if parent is None and len(parents) > 0:
+                    parent = parents[0]
+                if parent and not isinstance(parent, LineNode) and not isinstance(parent, LineSetNode):
+                    nodes.append(parent)
+            nodes.append(active_node)
+        else:
+            # ラインリストを表示する場合、選択中のラインセットのボタンを表示する
+            line_node = self.get_selected_line()
+            lineset_node = line_node.get_selected_lineset() if line_node is not None else None
+            if lineset_node is not None:
+                brush_settings_socket_name = "v_brush" if self.show_visible_lines else "h_brush"
+                brush_settings = \
+                    next(x for x in lineset_node.inputs if x.identifier == brush_settings_socket_name) \
+                    .get_connected_node()
+                if brush_settings is not None:
+                    nodes.append(brush_settings)
+        if isinstance(nodes[-1], BrushSettingsNode):
+            child = nodes[-1].find_connected_from_node(nodes[-1].brush_detail_node)
+            if child is not None:
+                nodes.append(child)
+        return nodes
 
     curve_node_tree: bpy.props.PointerProperty(type=bpy.types.NodeTree)
 

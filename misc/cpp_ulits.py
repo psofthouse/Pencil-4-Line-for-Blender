@@ -5,7 +5,7 @@ import bpy
 import math
 from ..node_tree.misc.AttrOverride import get_overrided_attr
 
-def copy_props(py_instance, cpp_instance, instance_dict=None, depsgraph: bpy.types.Depsgraph=None):
+def copy_props(py_instance, cpp_instance, instance_dict=None, context: bpy.types.Context=None, depsgraph: bpy.types.Depsgraph=None):
     for prop_name in (x for x in dir(cpp_instance) if not x.startswith("_")):
         if not hasattr(py_instance, prop_name):
             # 該当するプロパティがPython側に存在しない (このコードパスを通るのは基本的に不具合である)
@@ -13,8 +13,8 @@ def copy_props(py_instance, cpp_instance, instance_dict=None, depsgraph: bpy.typ
             continue
         py_value = getattr(py_instance, prop_name)
         py_type = type(py_value)
-        if depsgraph is not None:
-            py_value = get_overrided_attr(py_instance, prop_name, depsgraph=depsgraph)
+        if context is not None or depsgraph is not None:
+            py_value = get_overrided_attr(py_instance, prop_name, context=context, depsgraph=depsgraph)
         cpp_value = getattr(cpp_instance, prop_name)
         cpp_type = type(cpp_value)
 
@@ -38,16 +38,16 @@ def copy_props(py_instance, cpp_instance, instance_dict=None, depsgraph: bpy.typ
             setattr(cpp_instance, prop_name, py_instance.evaluate_curve(py_value, len(cpp_value)))
         # socket
         elif cpp_type is type(None) and py_type is str:
-            if depsgraph is not None:
-                py_value = py_instance.filtered_socket_id(py_instance.__class__.bl_rna.properties[prop_name].default, depsgraph=depsgraph)
+            if context is not None or depsgraph is not None:
+                py_value = py_instance.filtered_socket_id(py_instance.__class__.bl_rna.properties[prop_name].default, context=context, depsgraph=depsgraph)
             child_node = next((x.get_connected_node(ignore_muted_link = True) for x in py_instance.inputs if x.identifier == py_value), None)
             if instance_dict is not None and child_node is not None and child_node in instance_dict:
                 child_cpp_instance = instance_dict[child_node]
                 setattr(cpp_instance, prop_name, child_cpp_instance)
         # socket(multi)
         elif cpp_type is list and py_type is str:
-            if depsgraph is not None:
-                py_value = py_instance.filtered_socket_id(py_instance.__class__.bl_rna.properties[prop_name].default, depsgraph=depsgraph)
+            if context is not None or depsgraph is not None:
+                py_value = py_instance.filtered_socket_id(py_instance.__class__.bl_rna.properties[prop_name].default, context=context, depsgraph=depsgraph)
             if instance_dict is not None:
                 child_nodes = (x.get_connected_node(ignore_muted_link = True) for x in py_instance.inputs if x.identifier.startswith(py_value))
                 for n in child_nodes:

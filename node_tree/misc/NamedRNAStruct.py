@@ -26,8 +26,9 @@ class NamedRNAStruct(bpy.types.PropertyGroup):
             ret = next((x for x in i if x is not None and x.name == self.name), None)
         return ret
 
-    def get_node(self, context):
-        for n in context.space_data.edit_tree.nodes:
+    def get_node(self, context_ore_nodes):
+        nodes = context_ore_nodes.space_data.edit_tree.nodes if isinstance(context_ore_nodes, bpy.types.Context) else context_ore_nodes
+        for n in nodes:
             if self == n:
                 return n
 

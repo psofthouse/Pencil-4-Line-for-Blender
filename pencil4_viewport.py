@@ -27,6 +27,15 @@ else:
             from .bin import pencil4line_for_blender_mac_39 as pencil4line_for_blender
         elif sys.version_info.major == 3 and sys.version_info.minor == 10:
             from .bin import pencil4line_for_blender_mac_310 as pencil4line_for_blender
+        elif sys.version_info.major == 3 and sys.version_info.minor == 11:
+            from .bin import pencil4line_for_blender_mac_311 as pencil4line_for_blender
+    elif platform.system() == "Linux":
+        if sys.version_info.major == 3 and sys.version_info.minor == 9:
+            from .bin import pencil4line_for_blender_linux_39 as pencil4line_for_blender
+        elif sys.version_info.major == 3 and sys.version_info.minor == 10:
+            from .bin import pencil4line_for_blender_linux_310 as pencil4line_for_blender
+        elif sys.version_info.major == 3 and sys.version_info.minor == 11:
+            from .bin import pencil4line_for_blender_linux_311 as pencil4line_for_blender
     from . import pencil4_render_images
     from . import pencil4_render_session
     from .misc import gpu_utils
@@ -46,9 +55,15 @@ from enum import IntEnum
 from mathutils import Matrix
 
 class ViewportLineRenderSettings(bpy.types.PropertyGroup):
+    rendering_target_items = (
+        ("WHOLE_VIEWPORT", "Whole Viewport", "", 0),
+        ("CAMERA_AREA", "Camera Area", "", 1),
+    )
+
     enable: bpy.props.BoolProperty(default=False)
     enalbe_background_color: bpy.props.BoolProperty(default=False)
     background_color: bpy.props.FloatVectorProperty(subtype="COLOR", size=4, min=0.0, max=1.0, default=[1.0, 1.0, 1.0, 1.0])
+    camera_view_range: bpy.props.EnumProperty(items=rendering_target_items, default="WHOLE_VIEWPORT")
     camera_view_scale: bpy.props.BoolProperty(default=False)
     enalbe_background_color_for_render: bpy.props.BoolProperty(default=False)
     background_color_for_render: bpy.props.FloatVectorProperty(subtype="COLOR", size=4, min=0.0, max=1.0, default=[1.0, 1.0, 1.0, 1.0])
@@ -272,6 +287,10 @@ class ViewportLineRenderManager:
         region_3d: bpy.types.RegionView3D = bpy.context.region_data
         render_session = cls.get_render_session(space, region_3d)
         pixels = None
+        width = region.width
+        height = region.height
+        draw_texture_origin = None
+        draw_texture_size = None
 
         #　ライン描画の実行
         if render_session.render_mode >= 0 and render_session.render_mode != cls.RenderMode.Wait:
@@ -288,18 +307,34 @@ class ViewportLineRenderManager:
                 draw_option.timeout = 0.100 if render_session.render_mode != cls.RenderMode.Initialize else\
                     bpy.context.preferences.addons[__package__].preferences.viewport_render_timeout
                 draw_option.objects_cache_valid = render_session.objects_cache_valid if render_session.render_mode != cls.RenderMode.Initialize else False
-                if region_3d.view_perspective == "CAMERA" and settings.camera_view_scale:
+                matrix_override_func = None
+                if region_3d.view_perspective == "CAMERA" and settings.camera_view_range == "CAMERA_AREA":
+                    width, height = pencil4_render_session.get_render_size(depsgraph)
+                    border = cls.camera_border(bpy.context.scene, region, space, region_3d)
+                    draw_texture_origin = (border[2][0] / region.width, border[1][1] / region.height)
+                    draw_texture_size = ((border[0][0] - border[2][0]) / region.width, (border[0][1] - border[1][1]) / region.height)
+                    print(draw_texture_origin, draw_texture_size)
+                    def matrix_override(camera_matrix, window_matrix):
+                        return _calc_matrix_override(width, height, region, region_3d, depsgraph, camera_matrix, window_matrix)
+                    matrix_override_func = matrix_override
+                    draw_option.line_scale = 1.0
+                    draw_option.linesize_relative_target_width = 0
+                    draw_option.linesize_relative_target_height = 0
+                    draw_option.linesize_absolute_scale = 1.0
+                elif region_3d.view_perspective == "CAMERA" and settings.camera_view_scale:
                     border = cls.camera_border(bpy.context.scene, region, space, region_3d)
                     border_height = border[0][1] - border[1][1]
                     render_height = depsgraph.scene.render.resolution_y * depsgraph.scene.render.resolution_percentage * 0.01
                     draw_option.line_scale = border_height / render_height
                     draw_option.linesize_relative_target_width, draw_option.linesize_relative_target_height = pencil4_render_session.get_render_size(depsgraph)
+                    draw_option.linesize_absolute_scale = 1.0
                 else:
                     draw_option.line_scale = 1.0
                     draw_option.linesize_relative_target_width = 0
                     draw_option.linesize_relative_target_height = 0
+                    draw_option.linesize_absolute_scale = bpy.context.preferences.system.ui_scale / bpy.context.preferences.view.ui_scale
 
-                draw_ret = render_session.draw_line_for_viewport(depsgraph, region.width, region.height, space, region_3d)
+                draw_ret = render_session.draw_line_for_viewport(depsgraph, width, height, space, region_3d, matrix_override_func)
                 render_session.cleanup_frame()
 
                 if draw_ret == pencil4line_for_blender.draw_ret.success or draw_ret == pencil4line_for_blender.draw_ret.success_without_license:
@@ -336,8 +371,6 @@ class ViewportLineRenderManager:
                 gpu.matrix.load_matrix(Matrix.Identity(4))
                 gpu.matrix.load_projection_matrix(Matrix.Identity(4))
 
-                width = region.width
-                height = region.height
                 draw_line = pixels is not None and len(pixels) == width * height * 4
 
                 if settings.enalbe_background_color:
@@ -353,7 +386,7 @@ class ViewportLineRenderManager:
                     pixels = gpu.types.Buffer("FLOAT", width * height * 4, pixels)
                     tex = gpu.types.GPUTexture((width, height), data=pixels)
                     gpu.state.blend_set("ALPHA")
-                    __class__.__draw_texture(space, tex)
+                    __class__.__draw_texture(space, tex, draw_texture_origin, draw_texture_size)
                     del tex
 
     @staticmethod
@@ -425,13 +458,15 @@ class ViewportLineRenderManager:
     def __get_draw_tex_shader():
         if __class__.__draw_tex_shader is None:
             params = gpu_utils.ShaderParameters()
+            params.add_constant("VEC2", "origin")
+            params.add_constant("VEC2", "size")
             params.add_sampler("FLOAT_2D", "image")
             params.add_vert_output("VEC2", "uvInterp")
             __class__.__draw_tex_shader = __class__.__create_shader(
                 '''
                 void main()
                 {
-                    gl_Position = viewProjectionMatrix * vec4(pos, 0.0, 1.0);
+                    gl_Position = viewProjectionMatrix * vec4((pos - vec2(-1, -1)) * size + 2 * origin + vec2(-1, -1), 0.0, 1.0);
                     uvInterp = pos * 0.5 + 0.5;
                 }
                 ''',
@@ -486,11 +521,13 @@ class ViewportLineRenderManager:
         __class__.__get_shader_batch(shader).draw(shader)
 
     @staticmethod
-    def __draw_texture(space: bpy.types.SpaceView3D, tex: gpu.types.GPUTexture):
+    def __draw_texture(space: bpy.types.SpaceView3D, tex: gpu.types.GPUTexture, origin: Tuple[float, float] = None, size: Tuple[float, float] = None):
         shader = __class__.__get_draw_tex_shader()
         shader.bind()
         __class__.__setup_shader_common(shader, space)
         shader.uniform_sampler("image", tex)
+        shader.uniform_float("origin", origin if origin is not None else (0.0, 0.0))
+        shader.uniform_float("size", size if size is not None else (1.0, 1.0))
         __class__.__get_shader_batch(shader).draw(shader)
 
 
@@ -610,8 +647,11 @@ class PCL4_PT_ViewportLinePreview(bpy.types.Panel):
         col.enabled = settings.enalbe_background_color
         prop("background_color", "")
         layout.separator()
-        col = layout.column(heading="Camera View Option", heading_ctxt=Translation.ctxt)
-        prop("camera_view_scale", "Line Size Adjustment")
+        col = layout.column(heading="Camera View Options", heading_ctxt=Translation.ctxt)
+        col.enabled = context.space_data.region_3d.view_perspective == "CAMERA"
+        prop("camera_view_range", "Range")
+        if settings.camera_view_range == "WHOLE_VIEWPORT":
+            prop("camera_view_scale", "Line Size Adjustment")
 
 class PCL4_PT_ViewportLineRender(bpy.types.Panel):
     bl_idname = "PCL4_PT_viewport_line_render"
@@ -722,7 +762,7 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
             if not self.animation or self.render_frames is None or frame_current in self.render_frames:
                 space: bpy.types.SpaceView3D = bpy.context.space_data
                 region: bpy.types.Region = bpy.context.region
-                region_3d: bpy.types.RegionView3D = bpy.context.region_data
+                region_3d: bpy.types.RegionView3D = space.region_3d
 
                 # Blenderのビューポートレンダリングを実行し、レンダリング結果を取得する
                 bpy.ops.render.opengl()
@@ -752,17 +792,7 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                 depsgraph = context.evaluated_depsgraph_get()
                 width, height = pencil4_render_session.get_render_size(depsgraph)
                 def matrix_override(camera_matrix, window_matrix):
-                    base_size = max(width, height)
-                    scale = min(base_size / region.width, base_size / region.height)
-                    window_matrix = Matrix(window_matrix) @ Matrix(((scale * region.width / width, 0, 0, 0), (0, scale * region.height / height, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1)))
-                    if region_3d.view_perspective == "CAMERA":
-                        scene_camera = depsgraph.scene_eval.camera
-                        camera_matrix = pencil4_render_session.get_camera_matrix(scene_camera)
-                        sensor_size = max(width, height) if scene_camera.data.sensor_fit == "AUTO" else (width if scene_camera.data.sensor_fit == "HORIZONTAL" else height)
-                        window_matrix = scene_camera.calc_matrix_camera(depsgraph,
-                                            scale_x= depsgraph.scene.render.pixel_aspect_x * width / sensor_size,
-                                            scale_y= depsgraph.scene.render.pixel_aspect_y * height / sensor_size)
-                    return camera_matrix, window_matrix
+                    return _calc_matrix_override(width, height, region, region_3d, depsgraph, camera_matrix, window_matrix)
                 draw_ret = self.session.draw_line_for_viewport(context.evaluated_depsgraph_get(), width, height, space, region_3d, matrix_override)
                 if draw_ret != pencil4line_for_blender.draw_ret.success and draw_ret != pencil4line_for_blender.draw_ret.success_without_license:
                     self.report({'ERROR'}, "Failed to render lines.")
@@ -770,7 +800,10 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                     return {'CANCELLED'}
                 
                 # レンダリング結果にライン描画結果を合成する
-                offscreen = gpu.types.GPUOffScreen(width, height)
+                if bpy.app.version >= (3, 1, 0):
+                    offscreen = gpu.types.GPUOffScreen(width, height, format='RGBA16F')
+                else:
+                    offscreen = gpu.types.GPUOffScreen(width, height)
                 with offscreen.bind():
                     fb = gpu.state.active_framebuffer_get()
                     fb.clear(color=(0.0, 0.0, 0.0, 0.0))
@@ -782,6 +815,7 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                             tex.read()
                             gpu.state.blend_set("NONE" if self.image_alpha_mode == "PREMUL" else "ALPHA")
                             draw_texture_2d(tex, (-1, -1), 2, 2)
+                            del tex
                             if self.enalbe_background_color:
                                 tex = gpu.types.GPUTexture((8, 8))
                                 tex.clear(format="FLOAT", value=self.background_color)
@@ -841,6 +875,20 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
 
     def cancel(self, context):
         self.cleanup(context)
+
+
+def _calc_matrix_override(width: int, height: int, region, region_3d, depsgraph, camera_matrix, window_matrix):
+    base_size = max(width, height)
+    scale = min(base_size / region.width, base_size / region.height)
+    window_matrix = Matrix(window_matrix) @ Matrix(((scale * region.width / width, 0, 0, 0), (0, scale * region.height / height, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1)))
+    if region_3d.view_perspective == "CAMERA":
+        scene_camera = depsgraph.scene_eval.camera
+        camera_matrix = pencil4_render_session.get_camera_matrix(scene_camera)
+        sensor_size = max(width, height) if scene_camera.data.sensor_fit == "AUTO" else (width if scene_camera.data.sensor_fit == "HORIZONTAL" else height)
+        window_matrix = scene_camera.calc_matrix_camera(depsgraph,
+                            scale_x= depsgraph.scene.render.pixel_aspect_x * width / sensor_size,
+                            scale_y= depsgraph.scene.render.pixel_aspect_y * height / sensor_size)
+    return camera_matrix, window_matrix
 
 
 def RedrawPanel():

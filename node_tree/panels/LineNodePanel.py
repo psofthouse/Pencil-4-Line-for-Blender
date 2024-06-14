@@ -236,12 +236,12 @@ class PCL4_PT_line_base(PCL4_PT_line_mixin):
             sort_lock=True)
 
         row2 = col2.row(align=True)
-        new_lineset_button = row2.operator("pcl4.new_line_set", text="Add")
+        new_lineset_button = row2.operator("pcl4.new_line_set", text="Add", text_ctxt=Translation.ctxt)
         new_lineset_button.node_name = node.name
         new_lineset_button.index = -1
         row2 = row2.row()
         row2.enabled = len(getattr(node, "inputs", None)) > 1
-        remove_lineset_button = row2.operator("pcl4.remove_line_set", text="Remove")
+        remove_lineset_button = row2.operator("pcl4.remove_line_set", text="Remove", text_ctxt=Translation.ctxt)
         remove_lineset_button.node_name = node.name
         remove_lineset_button.index = node.lineset_selected_index
 

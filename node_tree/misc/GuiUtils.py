@@ -112,6 +112,7 @@ class PCL4_OT_SELECT_ENUM_PROP(bpy.types.Operator):
     def execute(self, context):
         setattr(context.space_data.edit_tree.nodes[self.node_name], self.prop_name, self.item)
         update_view3d_area(context.screen)
+        context.area.tag_redraw()
         return {"FINISHED"}
 
 
@@ -214,13 +215,13 @@ def draw_object_material_list(layout: bpy.types.UILayout,
         bpy.data.screens[0], "pcl4_dummy_index")
 
     row = layout.row(align=True)
-    btAdd = row.operator(add_operator, text="Add", text_ctxt=bpy.app.translations.contexts.default)
+    btAdd = row.operator(add_operator, text="Add", text_ctxt=Translation.ctxt)
     btAdd.data_ptr = str(data.as_pointer())
     btAdd.propname = propname
     btAdd.select_type = "ADD"
     row = row.row()
     row.enabled = len(getattr(data, propname, None)) > 0
-    btDelete = row.operator(delete_operator, text="Remove", text_ctxt=bpy.app.translations.contexts.default)
+    btDelete = row.operator(delete_operator, text="Remove", text_ctxt=Translation.ctxt)
     btDelete.data_ptr = str(data.as_pointer())
     btDelete.propname = propname
     btDelete.select_type = "REMOVE"

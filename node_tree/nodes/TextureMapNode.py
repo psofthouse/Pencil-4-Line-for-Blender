@@ -2,6 +2,7 @@
 # The Original Code is Copyright (C) P SOFTHOUSE Co., Ltd. All rights reserved.
 
 import bpy
+import math
 
 from .PencilNodeMixin import PencilNodeMixin
 from .PencilNodeSockets import *
@@ -23,7 +24,8 @@ class TextureMapNode(bpy.types.Node, PencilNodeMixin):
         ("REPEAT", "Repeat", "Repeat", 0),
         ("CLAMP", "Clamp", "Clamp", 1),
         ("MIRROR", "Mirror", "Mirror", 2),
-        ("MIRROR_ONCE", "Mirror Once", "Mirror Once", 3)
+        ("MIRROR_ONCE", "Mirror Once", "Mirror Once", 3),
+        ("CLIP", "Clip", "Clip", 4)
     )
 
     filter_mode_items = (
@@ -49,6 +51,7 @@ class TextureMapNode(bpy.types.Node, PencilNodeMixin):
     filter_mode: bpy.props.EnumProperty(items=filter_mode_items, default="BILINEAR", override={'LIBRARY_OVERRIDABLE'})
     tiling: bpy.props.FloatVectorProperty(subtype="XYZ", size=2, default=[1.0, 1.0], override={'LIBRARY_OVERRIDABLE'})
     offset: bpy.props.FloatVectorProperty(subtype="XYZ", size=2, default=[0.0, 0.0], override={'LIBRARY_OVERRIDABLE'})
+    rotation: bpy.props.FloatProperty(default=0.0, min=-20*math.pi, max=20*math.pi, subtype="ANGLE", override={'LIBRARY_OVERRIDABLE'})
 
     uv_source: bpy.props.EnumProperty(items=uv_source_items, default="SCREEN", override={'LIBRARY_OVERRIDABLE'})
     uv_selection_mode: bpy.props.EnumProperty(items=selection_mode_items, default="INDEX", override={'LIBRARY_OVERRIDABLE'})

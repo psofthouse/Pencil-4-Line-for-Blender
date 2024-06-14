@@ -94,6 +94,9 @@ class AddAttributeOverrideMixin:
         override_src = self.get_target(context)
         if data_path.endswith("_on_gui"):
             data_path = data_path[:-len("_gui")]
+        match = re.search(r'\[\d+\]$', data_path)
+        if match:
+            data_path = data_path[:match.start()]
         prop_name = data_path.rsplit('.', 1)[-1]
         prop = data.__class__.bl_rna.properties[prop_name]
         if isinstance(prop, bpy.types.EnumProperty):
