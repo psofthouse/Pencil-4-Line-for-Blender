@@ -313,7 +313,6 @@ class ViewportLineRenderManager:
                     border = cls.camera_border(bpy.context.scene, region, space, region_3d)
                     draw_texture_origin = (border[2][0] / region.width, border[1][1] / region.height)
                     draw_texture_size = ((border[0][0] - border[2][0]) / region.width, (border[0][1] - border[1][1]) / region.height)
-                    print(draw_texture_origin, draw_texture_size)
                     def matrix_override(camera_matrix, window_matrix):
                         return _calc_matrix_override(width, height, region, region_3d, depsgraph, camera_matrix, window_matrix)
                     matrix_override_func = matrix_override

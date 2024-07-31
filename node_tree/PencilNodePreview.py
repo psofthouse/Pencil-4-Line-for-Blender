@@ -221,6 +221,8 @@ class PreviewManager:
         if cache is None or cache.hash is None:
             return
         brush_detail, _ = __class__.__get_preview_target_node(node_tree)
+        if brush_detail is None:
+            return
         origin = Vector((
             brush_detail.location.x * bpy.context.preferences.system.ui_scale,
             (brush_detail.location.y + 5) * bpy.context.preferences.system.ui_scale - 0.5 * brush_detail.dimensions[1]))

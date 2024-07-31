@@ -58,17 +58,12 @@ class Pencil4RenderSession:
     def __init__(self):
         pencil4_render_images.ViewLayerLineOutputs.correct_image_names()
         self.__interm_context = pencil4line_for_blender.interm_context()
-        self.__converted_objects = dict()
         self.__curve_data = dict()
         self.__processed_view_layers = set()
 
 
     def cleanup_frame(self):
         self.__interm_context.cleanup_frame()
-
-        for obj in self.__converted_objects.keys():
-            obj.to_mesh_clear()
-        self.__converted_objects.clear()
         self.__curve_data.clear()
         self.__processed_view_layers.clear()
 
@@ -211,27 +206,23 @@ class Pencil4RenderSession:
             src_object = obj.original
 
             # オブジェクトのメッシュを取得
-            mesh: bpy.types.Mesh = self.__converted_objects.get(src_object)
-            if mesh is None:
-                if obj.type == "MESH":
-                    mesh = obj.data
-                    if mesh.is_editmode:
-                        mesh = obj.to_mesh()
-                        self.__converted_objects[src_object] = mesh
-                elif obj.type in line_object_types:
-                    if src_object in system_tessellated_objects:
-                        continue
-                    mesh = obj.to_mesh(preserve_all_data_layers=True, depsgraph=depsgraph)
-                    if mesh is None:
-                        continue
-                    self.__converted_objects[src_object] = mesh
-
-                    if obj.type == "CURVE" and len(mesh.polygons) == 0:
-                        # カーブをメッシュに変換したとき、押し出し量が0の場合だとエッジのみが生成されポリゴンは生成されない
-                        # このとき、もともとのカーブに付随していたマテリアルの情報は失われてしまう
-                        # ライン描画にはマテリアルの情報が必要になる場合もあるので、欠損した情報を付加する必要がある
-                        curve: bpy.types.Curve = obj.data
-                        self.__curve_data[mesh] = pencil4line_for_blender.interm_curve_data(curve.materials, [x.material_index for x in curve.splines])
+            mesh: bpy.types.Mesh = None
+            if obj.type == "MESH":
+                mesh = obj.data
+                if mesh.is_editmode:
+                    mesh = obj.to_mesh()
+            elif obj.type in line_object_types:
+                if src_object in system_tessellated_objects:
+                    continue
+                mesh = obj.to_mesh(preserve_all_data_layers=True, depsgraph=depsgraph)
+                if mesh is None:
+                    continue
+                if obj.type == "CURVE" and len(mesh.polygons) == 0:
+                    # カーブをメッシュに変換したとき、押し出し量が0の場合だとエッジのみが生成されポリゴンは生成されない
+                    # このとき、もともとのカーブに付随していたマテリアルの情報は失われてしまう
+                    # ライン描画にはマテリアルの情報が必要になる場合もあるので、欠損した情報を付加する必要がある
+                    curve: bpy.types.Curve = obj.data
+                    self.__curve_data[mesh] = pencil4line_for_blender.interm_curve_data(curve.materials, [x.material_index for x in curve.splines])
             
             if mesh is not None:
                 override_library = src_object.override_library

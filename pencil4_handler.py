@@ -48,6 +48,7 @@ def in_render_session() -> bool:
 def on_pre_render(scene: bpy.types.Scene):
     global __session
     if __session is None:
+        hide_shader_nodes_on_render()
         __session = RenderSession()
         pencil4_viewport.ViewportLineRenderManager.in_render_session = True
         pencil4_render_images.correct_duplicated_output_images(scene)
@@ -61,7 +62,9 @@ def on_render_cancel(scene: bpy.types.Scene):
     if __session is not None:
         __session.cleanup_all()
         __session = None
+        pencil4_render_images.unpack_images(scene)
         pencil4_viewport.ViewportLineRenderManager.in_render_session = False
+        restore_hidden_shader_nodes()
 
 @persistent
 def on_render_complete(scene: bpy.types.Scene):
@@ -71,6 +74,7 @@ def on_render_complete(scene: bpy.types.Scene):
         __session = None
         pencil4_render_images.unpack_images(scene)
         pencil4_viewport.ViewportLineRenderManager.in_render_session = False
+        restore_hidden_shader_nodes()
 
 @persistent
 def on_post_frame_change(scene: bpy.types.Scene, depsgraph: bpy.types.Depsgraph):
@@ -102,3 +106,36 @@ def on_load_post(dummy):
 @persistent
 def on_depsgraph_update_pre(scene: bpy.types.Scene):
     pencil4_viewport.ViewportLineRenderManager.invalidate_objects_cache()
+
+# Blender 3.5 ~ 4.1 では、レンダリング中に特定のシェーダーノードを表示するとフリーズする問題がある
+# 対策として、フリーズの原因になる表示中のシェーダーノードを隠す
+__hidden_shader_nodes = None
+_freeze_shader_nodes = { "ShaderNodeUVMap", "ShaderNodeVertexColor" }
+def hide_shader_nodes_on_render():
+    global __hidden_shader_nodes
+    if bpy.app.background or bpy.context.scene.render.use_lock_interface:
+        return
+    __hidden_shader_nodes = []
+    for wm in bpy.data.window_managers:
+        for window in wm.windows:
+            for area in window.screen.areas:
+                if area.type == "NODE_EDITOR":
+                    for space in area.spaces:
+                        if space.type == "NODE_EDITOR" and space.tree_type == "ShaderNodeTree":
+                            for node in space.edit_tree.nodes:
+                                if not node.hide and node.bl_idname in _freeze_shader_nodes:
+                                    node.hide = True
+                                    __hidden_shader_nodes.append((space.edit_tree, node.name))
+
+def restore_hidden_shader_nodes():
+    global __hidden_shader_nodes
+    if __hidden_shader_nodes is None:
+        return
+    hidden_shader_nodes = __hidden_shader_nodes
+    __hidden_shader_nodes = None
+    def restore_impl():
+        for tree, node_name in hidden_shader_nodes:
+            node = tree.nodes.get(node_name)
+            if node is not None:
+                node.hide = False
+    bpy.app.timers.register(restore_impl, first_interval=0.0)
