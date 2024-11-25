@@ -121,7 +121,7 @@ def hide_shader_nodes_on_render():
             for area in window.screen.areas:
                 if area.type == "NODE_EDITOR":
                     for space in area.spaces:
-                        if space.type == "NODE_EDITOR" and space.tree_type == "ShaderNodeTree":
+                        if space.type == "NODE_EDITOR" and space.tree_type == "ShaderNodeTree" and space.edit_tree is not None:
                             for node in space.edit_tree.nodes:
                                 if not node.hide and node.bl_idname in _freeze_shader_nodes:
                                     node.hide = True
