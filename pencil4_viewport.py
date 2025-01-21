@@ -773,6 +773,8 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                     self.image_alpha_mode = output_image.alpha_mode
                     __class__.set_render_view_image(output_image)
                 else:
+                    if output_image.packed_file is not None:
+                        output_image.unpack(method="REMOVE")
                     output_image.source = "FILE"
                     output_image.alpha_mode = self.image_alpha_mode
                     output_image.filepath = frame_path

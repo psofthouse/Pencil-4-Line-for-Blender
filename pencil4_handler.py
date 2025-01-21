@@ -16,10 +16,12 @@ from .pencil4_render_session import Pencil4RenderSession as RenderSession
 from .merge_helper import merge_helper
 from .node_tree import PencilNodeTree
 
+import threading
 import bpy
 from bpy.app.handlers import persistent
 
 __session: RenderSession = None
+__depsgraph_update_lock = threading.RLock()
 
 def append():
     bpy.app.handlers.render_pre.append(on_pre_render)
@@ -30,6 +32,7 @@ def append():
     bpy.app.handlers.save_post.append(on_save_post)
     bpy.app.handlers.load_post.append(on_load_post)
     bpy.app.handlers.depsgraph_update_pre.append(on_depsgraph_update_pre)
+    bpy.app.handlers.depsgraph_update_post.append(on_depsgraph_update_post)
 
 def remove():
     bpy.app.handlers.render_pre.remove(on_pre_render)
@@ -40,6 +43,7 @@ def remove():
     bpy.app.handlers.save_post.remove(on_save_post)
     bpy.app.handlers.load_post.remove(on_load_post)
     bpy.app.handlers.depsgraph_update_pre.remove(on_depsgraph_update_pre)
+    bpy.app.handlers.depsgraph_update_post.remove(on_depsgraph_update_post)
 
 def in_render_session() -> bool:
     return __session is not None
@@ -47,12 +51,14 @@ def in_render_session() -> bool:
 @persistent
 def on_pre_render(scene: bpy.types.Scene):
     global __session
+    global __depsgraph_update_lock
     if __session is None:
-        hide_shader_nodes_on_render()
-        __session = RenderSession()
-        pencil4_viewport.ViewportLineRenderManager.in_render_session = True
-        pencil4_render_images.correct_duplicated_output_images(scene)
-        pencil4_render_images.setup_images(scene)
+        with __depsgraph_update_lock:
+            hide_shader_nodes_on_render()
+            __session = RenderSession()
+            pencil4_viewport.ViewportLineRenderManager.in_render_session = True
+            pencil4_render_images.correct_duplicated_output_images(scene)
+            pencil4_render_images.setup_images(scene)
     else:
         __session.cleanup_frame()
 
@@ -105,7 +111,14 @@ def on_load_post(dummy):
 
 @persistent
 def on_depsgraph_update_pre(scene: bpy.types.Scene):
+    global __depsgraph_update_lock
+    __depsgraph_update_lock.acquire()
     pencil4_viewport.ViewportLineRenderManager.invalidate_objects_cache()
+
+@persistent
+def on_depsgraph_update_post(scene: bpy.types.Scene):
+    global __depsgraph_update_lock
+    __depsgraph_update_lock.release()
 
 # Blender 3.5 ~ 4.1 では、レンダリング中に特定のシェーダーノードを表示するとフリーズする問題がある
 # 対策として、フリーズの原因になる表示中のシェーダーノードを隠す

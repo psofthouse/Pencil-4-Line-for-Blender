@@ -105,7 +105,7 @@ class PCL4_PT_PencilLineList(PCL4_PT_PencilLineList_mixin, bpy.types.Panel):
             if line_node is None:
                 if len(tree.enumerate_lines()) > 0:
                     do_reset_selecttion = True
-            elif line_node.get_selected_lineset() is None and len(line_node.enumerate_input_nodes()) > 0:
+            elif line_node.get_selected_lineset() is None and any(x is not None for x in line_node.enumerate_input_nodes()):
                 do_reset_selecttion = True
             if do_reset_selecttion:
                 tree_ptr = str(tree.as_pointer())
@@ -456,8 +456,10 @@ class PCL4_OT_ResetNodeSelection(bpy.types.Operator):
         lineset_node = line_node.get_selected_lineset()
         if lineset_node is None:
             linesets = line_node.enumerate_input_nodes()
-            if len(linesets) > 0:
-                line_node.set_selected_lineset(linesets[0])
+            for i, lineset in enumerate(linesets):
+                if lineset is not None:
+                    line_node.set_selected_lineset(linesets[i])
+                    break
 
         for screen in context.blend_data.screens:
             for area in screen.areas:

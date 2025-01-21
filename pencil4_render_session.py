@@ -167,6 +167,7 @@ class Pencil4RenderSession:
 
         # 
         is_viewport = viewport_camera is not None
+        material_override = depsgraph.view_layer_eval.material_override if depsgraph.scene.render.engine == "CYCLES" else None
 
         # Holdout設定
         holdout_objects_from_collection = set()
@@ -236,7 +237,12 @@ class Pencil4RenderSession:
                         holdout = (object_instance.parent if object_instance.parent is not None else obj) in holdout_objects_from_collection
                 else:
                     holdout = False
-                render_Instance = pencil4line_for_blender.interm_render_Instance(src_object, object_instance.matrix_world, mesh, holdout)
+
+                object_materials = ()
+                if material_override is None and any([ms.link == "OBJECT" for ms in obj.material_slots]):
+                    object_materials = tuple([ms.material for ms in obj.material_slots])
+                
+                render_Instance = pencil4line_for_blender.interm_render_Instance(src_object, object_instance.matrix_world, mesh, holdout, object_materials)
                 render_instances.append(render_Instance)
 
                 if mesh_color_attributes is not None and mesh not in mesh_color_attributes:
@@ -285,8 +291,6 @@ class Pencil4RenderSession:
         # 描画
         pencil4line_for_blender.set_blender_version(bpy.app.version[0], bpy.app.version[1], bpy.app.version[2])
         pencil4line_for_blender.set_render_app_path(bpy.context.preferences.addons[__package__].preferences.render_app_path)
-
-        material_override = depsgraph.view_layer_eval.material_override if depsgraph.scene.render.engine == "CYCLES" else None
 
         if mesh_color_attributes is None:
             self.__interm_context.mesh_color_attributes_on = False

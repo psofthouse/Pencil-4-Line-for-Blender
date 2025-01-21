@@ -39,8 +39,8 @@ def collect_objects_in_scenes():
 
 def collect_materials_in_objects(objects:Iterable[bpy.types.Object]):
     materials = set()
-    for obj in (x for x in objects if hasattr(x.data, "materials")):
-        materials |= set(m for m in obj.data.materials if m is not None)
+    for object in objects:
+        materials |= set(ms.material for ms in object.material_slots if ms.material is not None)
     return materials
 
 
