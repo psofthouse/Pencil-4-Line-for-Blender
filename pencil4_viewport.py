@@ -726,15 +726,6 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                 if window.screen.areas[0].spaces[0].image != image:
                     window.screen.areas[0].spaces[0].image = image
 
-
-    def __init__(self):
-        self.original_frame_current = 0
-        self.render_frames = None
-        self.enalbe_background_color = False
-        self.background_color = [1.0, 1.0, 1.0, 1.0]
-        self.session = None
-        self.image_alpha_mode = None
-
     def cleanup(self, context):
         output_image = __class__.get_render_result_override_image()
         if output_image is not None:
@@ -854,6 +845,9 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
         if context.scene.render.is_movie_format and self.animation:
             self.report({'ERROR'}, "Movie format is not supported.")
             return {'CANCELLED'}
+        self.render_frames = None
+        self.session = None
+        self.image_alpha_mode = None
         self.original_frame_current = context.scene.frame_current
         self.background_color = context.scene.pencil4_line_viewport_render_background_color
         self.enalbe_background_color = context.scene.pencil4_line_viewport_render_background_color_enable

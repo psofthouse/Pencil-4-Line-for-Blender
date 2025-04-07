@@ -66,7 +66,7 @@ class PCL4_PT_PencilLineList_mixin:
                PencilNodeTree.tree_from_context(context).get_selected_line()
 
 
-class PCL4_PT_PencilLineList(PCL4_PT_PencilLineList_mixin, bpy.types.Panel):
+class PCL4_PT_PencilLineListSwitchButtons(PCL4_PT_PencilLineList_mixin, bpy.types.Panel):
     bl_space_type = "NODE_EDITOR"
     bl_region_type = "UI"
     bl_category = "Pencil+ 4 Line"
@@ -167,10 +167,27 @@ class PCL4_PT_PencilLineList(PCL4_PT_PencilLineList_mixin, bpy.types.Panel):
         
         self.draw_switch_buttons(context, layout.row(align=True))
 
-        if PencilNodeTree.show_node_params(context):
-            return
+class PCL4_PT_PencilLineListBody(PCL4_PT_PencilLineList_mixin, bpy.types.Panel):
+    bl_space_type = "NODE_EDITOR"
+    bl_region_type = "UI"
+    bl_category = "Pencil+ 4 Line"
+    bl_label = "Line List"
+    bl_order = 1
+    bl_translation_context = Translation.ctxt
 
-        layout.separator(factor=0.25)
+    @classmethod
+    def poll(cls, context):
+        if context.space_data.tree_type != PencilNodeTree.bl_idname:
+            return False
+        if PencilNodeTree.show_node_params(context):
+            return False
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        tree = PencilNodeTree.tree_from_context(context)
+        if tree is None:
+            return
         split_p = layout.split(factor=0.1)
         split_p.column()
         split_p = split_p.split(factor=1.0)

@@ -89,7 +89,9 @@ class Pencil4RenderSession:
         # 描画
         ret = pencil4line_for_blender.draw_ret.error_unknown
         try:
-            ret = self.__draw_line(depsgraph, width, height, image, element_dict, is_cycles = depsgraph.scene.render.engine == "CYCLES")
+            ret = self.__draw_line(depsgraph, width, height, image, element_dict,
+                                   is_cycles = depsgraph.scene.render.engine == "CYCLES",
+                                   is_eevee_next = depsgraph.scene.render.engine == "BLENDER_EEVEE_NEXT")
         finally:
             if ret != pencil4line_for_blender.draw_ret.success and ret != pencil4line_for_blender.draw_ret.success_without_license:
                 pencil4_render_images.reset_image(image)
@@ -135,7 +137,9 @@ class Pencil4RenderSession:
         return self.__draw_line(depsgraph, width, height, None, dict(),
                                 viewport_camera = interm_camera,
                                 space = space,
-                                is_cycles = space.shading.type == "RENDERED" and depsgraph.scene.render.engine == "CYCLES")
+                                is_cycles = depsgraph.scene.render.engine == "CYCLES" and space.shading.type == "RENDERED",
+                                is_eevee_next = (depsgraph.scene.render.engine == "BLENDER_EEVEE_NEXT" and (space.shading.type == "RENDERED" or space.shading.type == "MATERIAL")) or
+                                                (depsgraph.scene.render.engine == "CYCLES" and space.shading.type == "MATERIAL" and "BLENDER_EEVEE_NEXT" in bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items.keys()))
 
 
     def get_viewport_image_buffer(self):
@@ -150,7 +154,8 @@ class Pencil4RenderSession:
                     element_dict: dict[bpy.types.Image, pencil4line_for_blender.line_render_element],
                     viewport_camera: pencil4line_for_blender.interm_camera = None,
                     space: bpy.types.SpaceView3D = None,
-                    is_cycles: bool = False):
+                    is_cycles: bool = False,
+                    is_eevee_next: bool = False) -> pencil4line_for_blender.draw_ret:
         # ライン描画設定が何もなければライン描画せず終了
         (line_nodes, line_function_nodes) = PencilNodeTree.generate_cpp_nodes(depsgraph)
         if len(line_nodes) == 0:
@@ -196,7 +201,7 @@ class Pencil4RenderSession:
                 continue
 
             obj = object_instance.object
-            if is_cycles and not obj.visible_camera:
+            if (is_cycles or is_eevee_next) and not obj.visible_camera:
                 continue
             if is_viewport:
                 if object_instance.parent is not None:
