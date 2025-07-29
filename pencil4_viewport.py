@@ -15,27 +15,37 @@ if "bpy" in locals():
     imp.reload(Translation)
     __is_reloaded = True
 else:
+    import bpy
     if platform.system() == "Windows":
         if sys.version_info.major == 3 and sys.version_info.minor == 9:
             from .bin import pencil4line_for_blender_win64_39 as pencil4line_for_blender
         elif sys.version_info.major == 3 and sys.version_info.minor == 10:
             from .bin import pencil4line_for_blender_win64_310 as pencil4line_for_blender
         elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-            from .bin import pencil4line_for_blender_win64_311 as pencil4line_for_blender
+            if bpy.app.version < (4, 5, 0):
+                from .bin import pencil4line_for_blender_win64_311 as pencil4line_for_blender
+            else:
+                from .bin import pencil4line_for_blender_win64_311_450 as pencil4line_for_blender
     elif platform.system() == "Darwin":
         if sys.version_info.major == 3 and sys.version_info.minor == 9:
             from .bin import pencil4line_for_blender_mac_39 as pencil4line_for_blender
         elif sys.version_info.major == 3 and sys.version_info.minor == 10:
             from .bin import pencil4line_for_blender_mac_310 as pencil4line_for_blender
         elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-            from .bin import pencil4line_for_blender_mac_311 as pencil4line_for_blender
+            if bpy.app.version < (4, 5, 0):
+                from .bin import pencil4line_for_blender_mac_311 as pencil4line_for_blender
+            else:
+                from .bin import pencil4line_for_blender_mac_311_450 as pencil4line_for_blender
     elif platform.system() == "Linux":
         if sys.version_info.major == 3 and sys.version_info.minor == 9:
             from .bin import pencil4line_for_blender_linux_39 as pencil4line_for_blender
         elif sys.version_info.major == 3 and sys.version_info.minor == 10:
             from .bin import pencil4line_for_blender_linux_310 as pencil4line_for_blender
         elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-            from .bin import pencil4line_for_blender_linux_311 as pencil4line_for_blender
+            if bpy.app.version < (4, 5, 0):
+                from .bin import pencil4line_for_blender_linux_311 as pencil4line_for_blender
+            else:
+                from .bin import pencil4line_for_blender_linux_311_450 as pencil4line_for_blender
     from . import pencil4_render_images
     from . import pencil4_render_session
     from .misc import gpu_utils

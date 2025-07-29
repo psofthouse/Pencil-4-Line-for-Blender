@@ -61,8 +61,8 @@ def copy_props(py_instance, cpp_instance, instance_dict=None, context: bpy.types
             setattr(cpp_instance, prop_name, py_value)
         # object
         elif cpp_type is type(None) and py_type is bpy.types.Object:
-            if depsgraph is not None:
-                eval_object = depsgraph.id_eval_get(py_value)
+            if py_value is not None and depsgraph is not None:
+                eval_object = next((x.object for x in depsgraph.object_instances if x.object.original.override_library is not None and x.object.original.override_library.reference == py_value), depsgraph.id_eval_get(py_value)) 
                 if eval_object is not None:
                     py_value = eval_object
             setattr(cpp_instance, prop_name, py_value)

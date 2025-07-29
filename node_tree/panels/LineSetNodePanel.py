@@ -293,12 +293,22 @@ class LineSetAddRemoveOperatorMixin(GuiUtils.IDSelectAddRemoveOperatorMixin):
         return next(x for x in node_tree.nodes if x.as_pointer() == data_ptr)
 
     def additional_excludes(self, context):
-        # 属するLineの配下のLineSetへ既に接続されている要素は除外する
         data = self.specify_data(context)
-        lines = [x.to_node for x in data.outputs[0].links]
-        linesets = [x.get_connected_node() for x in itertools.chain.from_iterable(x.inputs for x in lines if x is not None)]
-        linesets = [x for x in linesets if x is not None]
-        return set(itertools.chain.from_iterable(DataUtils.enumerate_ids_from_collection(lineset, self.propname) for lineset in linesets))
+        if self.select_type == "ADD":
+            # 属するLineの配下のLineSetへ既に接続されている要素は除外する
+            lines = [x.to_node for x in data.outputs[0].links]
+            linesets = [x.get_connected_node() for x in itertools.chain.from_iterable(x.inputs for x in lines if x is not None)]
+            linesets = [x for x in linesets if x is not None]
+            return set(itertools.chain.from_iterable(DataUtils.enumerate_ids_from_collection(lineset, self.propname) for lineset in linesets))
+        elif self.select_type == "REMOVE":
+            # ライブラリオーバーライドされているとき、元から存在する要素は除外する
+            node_tree = context.space_data.edit_tree
+            if node_tree.override_library is not None:
+                src_tree = node_tree.override_library.reference
+                if data.name in src_tree.nodes:
+                    src_data = node_tree.override_library.reference.nodes[data.name]
+                    return set(DataUtils.enumerate_ids_from_collection(src_data, self.propname))
+        return set()
 
 class PCL4_OT_LineSetAddMaterials(LineSetAddRemoveOperatorMixin, bpy.types.Operator):
     bl_idname = "pcl4.line_set_add_materials"

@@ -58,11 +58,11 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
     lineset_id: bpy.props.IntProperty(default=1, min=1, max=8, override={'LIBRARY_OVERRIDABLE'})
 
     # objects
-    objects: bpy.props.CollectionProperty(type=ObjectElement, override={'LIBRARY_OVERRIDABLE'})
+    objects: bpy.props.CollectionProperty(type=ObjectElement, override={'LIBRARY_OVERRIDABLE', 'USE_INSERTION'})
     objects_selected_index: bpy.props.IntProperty(override={'LIBRARY_OVERRIDABLE'})
 
     # materials
-    materials: bpy.props.CollectionProperty(type=MaterialElement, override={'LIBRARY_OVERRIDABLE'})
+    materials: bpy.props.CollectionProperty(type=MaterialElement, override={'LIBRARY_OVERRIDABLE', 'USE_INSERTION'})
     materials_selected_index: bpy.props.IntProperty(override={'LIBRARY_OVERRIDABLE'})
 
     is_weld_edges: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})

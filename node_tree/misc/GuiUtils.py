@@ -172,7 +172,11 @@ class IDSelectAddRemoveOperatorMixin(IDSelectOperatorMixin):
             elif content_type.name == bpy.types.Object.__name__:
                 targets = DataUtils.collect_objects_in_data()
             exludes = set(ids) | self.additional_excludes(context)
-            ids = [x for x in targets if x.override_library is None and not x in exludes]
+            ids = targets
+        else:
+            exludes = self.additional_excludes(context)
+        if exludes is not None and len(exludes) > 0:
+            ids = [x for x in ids if x.override_library is None and not x in exludes]
         
         selection = set(context.selected_objects)
         if content_type.name == bpy.types.Material.__name__:

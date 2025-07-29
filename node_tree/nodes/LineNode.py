@@ -120,7 +120,7 @@ class LineNode(bpy.types.Node, PencilNodeMixin):
             if tree is not None:
                 tree.nodes.active = node
 
-    lineset_selected_index: bpy.props.IntProperty(get=get_selected_index, set=set_selected_index)
+    lineset_selected_index: bpy.props.IntProperty(get=get_selected_index, set=set_selected_index, override={'LIBRARY_OVERRIDABLE'})
     selected_lineset_node: bpy.props.PointerProperty(type=NamedRNAStruct, options={"HIDDEN", "SKIP_SAVE"})
 
     def get_selected_lineset(self):

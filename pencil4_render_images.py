@@ -23,21 +23,30 @@ if platform.system() == "Windows":
     elif sys.version_info.major == 3 and sys.version_info.minor == 10:
         from .bin import pencil4line_for_blender_win64_310 as cpp
     elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-        from .bin import pencil4line_for_blender_win64_311 as cpp
+        if bpy.app.version < (4, 5, 0):
+            from .bin import pencil4line_for_blender_win64_311 as cpp
+        else:
+            from .bin import pencil4line_for_blender_win64_311_450 as cpp
 elif platform.system() == "Darwin":
     if sys.version_info.major == 3 and sys.version_info.minor == 9:
         from .bin import pencil4line_for_blender_mac_39 as cpp
     elif sys.version_info.major == 3 and sys.version_info.minor == 10:
         from .bin import pencil4line_for_blender_mac_310 as cpp
     elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-        from .bin import pencil4line_for_blender_mac_311 as cpp
+        if bpy.app.version < (4, 5, 0):
+            from .bin import pencil4line_for_blender_mac_311 as cpp
+        else:
+            from .bin import pencil4line_for_blender_mac_311_450 as cpp
 elif platform.system() == "Linux":
     if sys.version_info.major == 3 and sys.version_info.minor == 9:
         from .bin import pencil4line_for_blender_linux_39 as cpp
     elif sys.version_info.major == 3 and sys.version_info.minor == 10:
         from .bin import pencil4line_for_blender_linux_310 as cpp
     elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-        from .bin import pencil4line_for_blender_linux_311 as cpp
+        if bpy.app.version < (4, 5, 0):
+            from .bin import pencil4line_for_blender_linux_311 as cpp
+        else:
+            from .bin import pencil4line_for_blender_linux_311_450 as cpp
 
 
 IMAGE_NAME_PREFIX = "Pencil+ 4."

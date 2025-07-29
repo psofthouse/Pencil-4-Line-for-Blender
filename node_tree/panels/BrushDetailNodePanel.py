@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # The Original Code is Copyright (C) P SOFTHOUSE Co., Ltd. All rights reserved.
 
-from cProfile import label
-from cgitb import text
 import bpy
 from ..nodes.BrushDetailNode import BrushDetailNode
 from ..PencilNodeTree import PencilNodeTree
