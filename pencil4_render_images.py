@@ -4,8 +4,10 @@
 if "bpy" in locals():
     import imp
     imp.reload(cpp_ulits)
+    imp.reload(compositing_utils)
 else:
     from .misc import cpp_ulits
+    from .misc import compositing_utils
 
 import sys
 import platform
@@ -16,6 +18,7 @@ import bpy
 import itertools
 from typing import Iterable
 
+from .misc.compositing_utils import get_compositing_node_group_from_scene
 
 if platform.system() == "Windows":
     if sys.version_info.major == 3 and sys.version_info.minor == 9:
@@ -25,8 +28,10 @@ if platform.system() == "Windows":
     elif sys.version_info.major == 3 and sys.version_info.minor == 11:
         if bpy.app.version < (4, 5, 0):
             from .bin import pencil4line_for_blender_win64_311 as cpp
-        else:
+        elif bpy.app.version < (5, 0, 0):
             from .bin import pencil4line_for_blender_win64_311_450 as cpp
+        else:
+            from .bin import pencil4line_for_blender_win64_311_500 as cpp
 elif platform.system() == "Darwin":
     if sys.version_info.major == 3 and sys.version_info.minor == 9:
         from .bin import pencil4line_for_blender_mac_39 as cpp
@@ -35,8 +40,10 @@ elif platform.system() == "Darwin":
     elif sys.version_info.major == 3 and sys.version_info.minor == 11:
         if bpy.app.version < (4, 5, 0):
             from .bin import pencil4line_for_blender_mac_311 as cpp
-        else:
+        elif bpy.app.version < (5, 0, 0):
             from .bin import pencil4line_for_blender_mac_311_450 as cpp
+        else:
+            from .bin import pencil4line_for_blender_mac_311_500 as cpp
 elif platform.system() == "Linux":
     if sys.version_info.major == 3 and sys.version_info.minor == 9:
         from .bin import pencil4line_for_blender_linux_39 as cpp
@@ -45,8 +52,10 @@ elif platform.system() == "Linux":
     elif sys.version_info.major == 3 and sys.version_info.minor == 11:
         if bpy.app.version < (4, 5, 0):
             from .bin import pencil4line_for_blender_linux_311 as cpp
-        else:
+        elif bpy.app.version < (5, 0, 0):
             from .bin import pencil4line_for_blender_linux_311_450 as cpp
+        else:
+            from .bin import pencil4line_for_blender_linux_311_500 as cpp
 
 
 IMAGE_NAME_PREFIX = "Pencil+ 4."
@@ -269,6 +278,7 @@ def setup_image(image: bpy.types.Image, width: int, height: int):
         image.colorspace_settings.name = colorspace
     if image.alpha_mode != "PREMUL":
         image.alpha_mode = "PREMUL"
+    image.generated_color = [0, 0, 0, 0]
     if image.size[0] != width or image.size[1] != height:
         image.scale(image.size[0] if width <= 0 else width, image.size[1] if height <= 0 else height)
 
@@ -321,8 +331,9 @@ def enumerate_images_from_compositor_nodes(view_layer: bpy.types.ViewLayer, chec
     main_image = None
     element_dict = {}
 
-    if bpy.context.scene.node_tree is not None:
-        for image in [node.image for node in bpy.context.scene.node_tree.nodes if node.type == "IMAGE" and node.image]:
+    compositing_node_group = get_compositing_node_group_from_scene(bpy.context.scene)
+    if compositing_node_group is not None:
+        for image in [node.image for node in compositing_node_group.nodes if node.type == "IMAGE" and node.image]:
             if check_image_size is not None and (image.size[0] != check_image_size[0] or image.size[1] != check_image_size[1]):
                 continue
             if image == view_layer.pencil4_line_outputs.output.main:
@@ -338,8 +349,9 @@ def enumerate_images_from_compositor_nodes(view_layer: bpy.types.ViewLayer, chec
 
 
 def enumerate_vector_outputs_from_compositor_nodes(view_layer: bpy.types.ViewLayer, create_folder: bool = False) -> list[cpp.vector_output]:
-    if bpy.context.scene.node_tree is not None:
-        for image in [node.image for node in bpy.context.scene.node_tree.nodes if node.type == "IMAGE" and node.image]:
+    compositing_node_group = get_compositing_node_group_from_scene(bpy.context.scene)
+    if compositing_node_group is not None:
+        for image in [node.image for node in compositing_node_group.nodes if node.type == "IMAGE" and node.image]:
             if image == view_layer.pencil4_line_outputs.output.main:
                 outputs = []
                 for py_output in view_layer.pencil4_line_outputs.vector_outputs:

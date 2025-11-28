@@ -13,7 +13,7 @@ from .misc.IDSelectDialog import IDSelectOperatorMixin
 def register():
     PencilNodeMixin.target_node_tree_type = PencilNodeTree.bl_idname
     nodeitems_utils.register_node_categories('PENCIL4_NODES', node_categories)
-    bpy.types.Screen.pcl4_dummy_index = bpy.props.IntProperty(default=-1, set=lambda self, val: None)
+    bpy.types.Screen.pcl4_dummy_index = bpy.props.IntProperty(default=-1, set=lambda self, val: None, get=lambda self: -1)
     bpy.types.Material.pcl4_line_functions = bpy.props.PointerProperty(type=bpy.types.Material,
         poll=lambda self, x: LineFunctionsContainerNode.get_line_functions_node(x))
     PencilNodeTree.register_menu()

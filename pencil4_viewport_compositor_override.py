@@ -4,10 +4,14 @@
 if "bpy" in locals():
     import imp
     imp.reload(pencil4_render_images)
+    imp.reload(compositing_utils)
 else:
     from . import pencil4_render_images
+    from .misc import compositing_utils
 
 import bpy
+
+from .misc.compositing_utils import get_compositing_node_group_from_scene
 
 class Manager:
     _handler = None
@@ -21,8 +25,9 @@ class Manager:
         if depsgraph is None:
             return
         scene = depsgraph.scene_eval
-        if scene.use_nodes and scene.node_tree:
-            for node in pencil4_render_images.iterate_all_pencil_image_nodes(scene.node_tree):
+        compositing_node_group = get_compositing_node_group_from_scene(scene)
+        if scene.use_nodes and compositing_node_group is not None:
+            for node in pencil4_render_images.iterate_all_pencil_image_nodes(compositing_node_group):
                 if not node.mute:
                     node.mute = True
                 for l in node.outputs[0].links:

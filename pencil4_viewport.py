@@ -24,8 +24,10 @@ else:
         elif sys.version_info.major == 3 and sys.version_info.minor == 11:
             if bpy.app.version < (4, 5, 0):
                 from .bin import pencil4line_for_blender_win64_311 as pencil4line_for_blender
-            else:
+            elif bpy.app.version < (5, 0, 0):
                 from .bin import pencil4line_for_blender_win64_311_450 as pencil4line_for_blender
+            else:
+                from .bin import pencil4line_for_blender_win64_311_500 as pencil4line_for_blender
     elif platform.system() == "Darwin":
         if sys.version_info.major == 3 and sys.version_info.minor == 9:
             from .bin import pencil4line_for_blender_mac_39 as pencil4line_for_blender
@@ -34,8 +36,10 @@ else:
         elif sys.version_info.major == 3 and sys.version_info.minor == 11:
             if bpy.app.version < (4, 5, 0):
                 from .bin import pencil4line_for_blender_mac_311 as pencil4line_for_blender
-            else:
+            elif bpy.app.version < (5, 0, 0):
                 from .bin import pencil4line_for_blender_mac_311_450 as pencil4line_for_blender
+            else:
+                from .bin import pencil4line_for_blender_mac_311_500 as pencil4line_for_blender
     elif platform.system() == "Linux":
         if sys.version_info.major == 3 and sys.version_info.minor == 9:
             from .bin import pencil4line_for_blender_linux_39 as pencil4line_for_blender
@@ -44,8 +48,10 @@ else:
         elif sys.version_info.major == 3 and sys.version_info.minor == 11:
             if bpy.app.version < (4, 5, 0):
                 from .bin import pencil4line_for_blender_linux_311 as pencil4line_for_blender
-            else:
+            elif bpy.app.version < (5, 0, 0):
                 from .bin import pencil4line_for_blender_linux_311_450 as pencil4line_for_blender
+            else:
+                from .bin import pencil4line_for_blender_linux_311_500 as pencil4line_for_blender
     from . import pencil4_render_images
     from . import pencil4_render_session
     from .misc import gpu_utils
@@ -63,6 +69,7 @@ from gpu_extras.presets import draw_texture_2d
 import blf
 from enum import IntEnum
 from mathutils import Matrix
+from bpy_extras import anim_utils
 
 class ViewportLineRenderSettings(bpy.types.PropertyGroup):
     rendering_target_items = (
@@ -870,7 +877,9 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                 self.render_frames = set([context.scene.frame_start])
                 for object in context.selected_objects:
                     if object.animation_data is not None and object.animation_data.action is not None:
-                        for curve in object.animation_data.action.fcurves:
+                        action = object.animation_data.action
+                        fcurves = getattr(action, "fcurves", None) or anim_utils.action_ensure_channelbag_for_slot(action, object.animation_data.action_slot).fcurves
+                        for curve in fcurves:
                             for keyframe in curve.keyframe_points:
                                 self.render_frames.add(int(keyframe.co[0]))
         __class__.delete_render_result_override_image()

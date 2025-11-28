@@ -20,8 +20,10 @@ else:
         elif sys.version_info.major == 3 and sys.version_info.minor == 11:
             if bpy.app.version < (4, 5, 0): 
                 from .bin import pencil4line_for_blender_win64_311 as pencil4line_for_blender
-            else:
+            elif bpy.app.version < (5, 0, 0):
                 from .bin import pencil4line_for_blender_win64_311_450 as pencil4line_for_blender
+            else:
+                from .bin import pencil4line_for_blender_win64_311_500 as pencil4line_for_blender
     elif platform.system() == "Darwin":
         if sys.version_info.major == 3 and sys.version_info.minor == 9:
             from .bin import pencil4line_for_blender_mac_39 as pencil4line_for_blender
@@ -30,8 +32,10 @@ else:
         elif sys.version_info.major == 3 and sys.version_info.minor == 11:
             if bpy.app.version < (4, 5, 0): 
                 from .bin import pencil4line_for_blender_mac_311 as pencil4line_for_blender
-            else:
+            elif bpy.app.version < (5, 0, 0):
                 from .bin import pencil4line_for_blender_mac_311_450 as pencil4line_for_blender
+            else:
+                from .bin import pencil4line_for_blender_mac_311_500 as pencil4line_for_blender
     elif platform.system() == "Linux":
         if sys.version_info.major == 3 and sys.version_info.minor == 9:
             from .bin import pencil4line_for_blender_linux_39 as pencil4line_for_blender
@@ -40,8 +44,10 @@ else:
         elif sys.version_info.major == 3 and sys.version_info.minor == 11:
             if bpy.app.version < (4, 5, 0):
                 from .bin import pencil4line_for_blender_linux_311 as pencil4line_for_blender
-            else:
+            elif bpy.app.version < (5, 0, 0):
                 from .bin import pencil4line_for_blender_linux_311_450 as pencil4line_for_blender
+            else:
+                from .bin import pencil4line_for_blender_linux_311_500 as pencil4line_for_blender
     from . import pencil4_render_images
     from .misc import cpp_ulits
 

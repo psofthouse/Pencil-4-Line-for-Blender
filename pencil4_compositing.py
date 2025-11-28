@@ -5,11 +5,15 @@ if "bpy" in locals():
     import imp
     imp.reload(pencil4_render_images)
     imp.reload(Translation)
+    imp.reload(compositing_utils)
 else:
     from . import pencil4_render_images
     from .i18n import Translation
+    from .misc import compositing_utils
 
 import bpy
+
+from .misc.compositing_utils import get_compositing_node_group_from_scene
 
 class PCL4_OT_AddImageNode(bpy.types.Operator):
     bl_idname = "pcl4.add_image_node"
@@ -71,7 +75,7 @@ class PCL4_OT_DeleteLineRenderElement(bpy.types.Operator):
                 render_elements.remove(i)
 
                 if image is not None:
-                    tree = context.scene.node_tree
+                    tree = get_compositing_node_group_from_scene(context.scene)
                     if tree is not None:
                         remove_nodes = [n for n in tree.nodes if n.type == "IMAGE" and n.image == image]
                         for n in remove_nodes:
@@ -220,7 +224,7 @@ class PCL4_PT_VectorOutput(bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         tree: bpy.types.NodeTree = context.space_data.node_tree
-        if tree is None or tree != context.scene.node_tree:
+        if tree is None or tree != get_compositing_node_group_from_scene(context.scene):
             return False
 
         node = tree.nodes.active
@@ -344,7 +348,7 @@ class PCL4_PT_LineRenderElement(bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         tree: bpy.types.NodeTree = context.space_data.node_tree
-        if tree is None or tree != context.scene.node_tree:
+        if tree is None or tree != get_compositing_node_group_from_scene(context.scene):
             return False
 
         node = tree.nodes.active

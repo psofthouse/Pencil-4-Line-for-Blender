@@ -31,7 +31,7 @@ class LineNode(bpy.types.Node, PencilNodeMixin):
 
     line_sets: bpy.props.StringProperty(default=LINE_SET_SOCKET_ID,
                                         override={'LIBRARY_OVERRIDABLE'},
-                                        set=lambda self, value: None)
+                                        set=lambda self, value: None, get=lambda self: self.filtered_socket_id(LINE_SET_SOCKET_ID))
 
     line_size_type: bpy.props.EnumProperty(items=line_size_type_items, default="ABSOLUTE", override={'LIBRARY_OVERRIDABLE'})
 

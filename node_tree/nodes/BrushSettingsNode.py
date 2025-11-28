@@ -25,7 +25,7 @@ class BrushSettingsNode(bpy.types.Node, PencilNodeMixin):
 
     brush_detail_node: bpy.props.StringProperty(
         default=BRUSH_DETAIL_SOCKET_ID,
-        set=lambda self, val: None)
+        set=lambda self, val: None, get=lambda self: self.filtered_socket_id(BRUSH_DETAIL_SOCKET_ID))
 
     blend_amount: bpy.props.FloatProperty(
         subtype="FACTOR",

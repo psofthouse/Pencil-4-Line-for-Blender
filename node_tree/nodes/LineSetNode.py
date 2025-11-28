@@ -71,7 +71,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
     # v brush settings
     v_brush_settings: bpy.props.StringProperty(
         default=V_BRUSH_SOCKET_ID,
-        set=lambda self, val: None)
+        set=lambda self, val: None, get=lambda self: self.filtered_socket_id(V_BRUSH_SOCKET_ID))
 
     # v outline
     v_outline_on: bpy.props.BoolProperty(default=True, override={'LIBRARY_OVERRIDABLE'})
@@ -190,7 +190,7 @@ class LineSetNode(bpy.types.Node, PencilNodeMixin):
     # h brush settings
     h_brush_settings: bpy.props.StringProperty(
         default=H_BRUSH_SOCKET_ID,
-        set=lambda self, val: None)
+        set=lambda self, val: None, get=lambda self: self.filtered_socket_id(H_BRUSH_SOCKET_ID))
 
     # h outline
     h_outline_on: bpy.props.BoolProperty(default=False, override={'LIBRARY_OVERRIDABLE'})
