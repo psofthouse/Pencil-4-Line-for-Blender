@@ -2,13 +2,12 @@
 # The Original Code is Copyright (C) P SOFTHOUSE Co., Ltd. All rights reserved.
 
 from pathlib import Path
-import sys
-import platform
 import bpy
 import itertools
 import random
 import functools
-from ..misc import cpp_ulits
+from ..misc import cpp_utils
+from ..misc.cpp_module_loader import load_cpp_module
 from .misc import PencilCurves
 from .misc.NamedRNAStruct import NamedRNAStruct
 from .misc.IDMap import MaterialIDMap
@@ -100,48 +99,7 @@ class PencilNodeTree(bpy.types.NodeTree):
 
     @classmethod
     def generate_cpp_nodes(cls, depsgraph: bpy.types.Depsgraph=None):
-        if platform.system() == "Windows":
-            if sys.version_info.major == 3 and sys.version_info.minor == 9:
-                from ..bin import pencil4line_for_blender_win64_39 as cpp
-            elif sys.version_info.major == 3 and sys.version_info.minor == 10:
-                from ..bin import pencil4line_for_blender_win64_310 as cpp
-            elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-                if bpy.app.version < (4, 5, 0):
-                    from ..bin import pencil4line_for_blender_win64_311 as cpp
-                elif bpy.app.version < (5, 0, 0):
-                    from ..bin import pencil4line_for_blender_win64_311_450 as cpp
-                else:
-                    from ..bin import pencil4line_for_blender_win64_311_500 as cpp
-            elif sys.version_info.major == 3 and sys.version_info.minor == 13:
-                from ..bin import pencil4line_for_blender_win64_313 as cpp
-        elif platform.system() == "Darwin":
-            if sys.version_info.major == 3 and sys.version_info.minor == 9:
-                from ..bin import pencil4line_for_blender_mac_39 as cpp
-            elif sys.version_info.major == 3 and sys.version_info.minor == 10:
-                from ..bin import pencil4line_for_blender_mac_310 as cpp
-            elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-                if bpy.app.version < (4, 5, 0):
-                    from ..bin import pencil4line_for_blender_mac_311 as cpp
-                elif bpy.app.version < (5, 0, 0):
-                    from ..bin import pencil4line_for_blender_mac_311_450 as cpp
-                else:
-                    from ..bin import pencil4line_for_blender_mac_311_500 as cpp
-            elif sys.version_info.major == 3 and sys.version_info.minor == 13:
-                from ..bin import pencil4line_for_blender_mac_313 as cpp
-        elif platform.system() == "Linux":
-            if sys.version_info.major == 3 and sys.version_info.minor == 9:
-                from ..bin import pencil4line_for_blender_linux_39 as cpp
-            elif sys.version_info.major == 3 and sys.version_info.minor == 10:
-                from ..bin import pencil4line_for_blender_linux_310 as cpp
-            elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-                if bpy.app.version < (4, 5, 0):
-                    from ..bin import pencil4line_for_blender_linux_311 as cpp
-                elif bpy.app.version < (5, 0, 0):
-                    from ..bin import pencil4line_for_blender_linux_311_450 as cpp
-                else:
-                    from ..bin import pencil4line_for_blender_linux_311_500 as cpp
-            elif sys.version_info.major == 3 and sys.version_info.minor == 13:
-                from ..bin import pencil4line_for_blender_linux_313 as cpp
+        cpp = load_cpp_module(__package__, "..bin")
 
         # C++側に渡すためのノードのインスタンスを生成
         node_dict = {}
@@ -179,8 +137,9 @@ class PencilNodeTree(bpy.types.NodeTree):
                 line_function_nodes_dict[py_node].append(mat)
 
         # 各ノードに値を詰める
+        links_map = cpp_utils.build_links_map(cls.enumerate_trees())
         for py_node, cpp_node in node_dict.items():
-            cpp_ulits.copy_props(py_node, cpp_node, node_dict, depsgraph=depsgraph)
+            cpp_utils.copy_props(py_node, cpp_node, node_dict, depsgraph=depsgraph, links_map=links_map)
 
         for py_node, target_materials in line_function_nodes_dict.items():
             node_dict[py_node]._target_materials = target_materials

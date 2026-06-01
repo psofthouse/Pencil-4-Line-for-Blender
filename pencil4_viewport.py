@@ -1,13 +1,12 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # The Original Code is Copyright (C) P SOFTHOUSE Co., Ltd. All rights reserved.
 
-import sys
-import platform
-
 __is_reloaded = False
 
 if "bpy" in locals():
     import importlib
+    importlib.reload(cpp_module_loader)
+    pencil4line_for_blender = cpp_module_loader.load_cpp_module(__package__, ".bin")
     importlib.reload(pencil4line_for_blender)
     importlib.reload(pencil4_render_images)
     importlib.reload(pencil4_render_session)
@@ -16,48 +15,8 @@ if "bpy" in locals():
     __is_reloaded = True
 else:
     import bpy
-    if platform.system() == "Windows":
-        if sys.version_info.major == 3 and sys.version_info.minor == 9:
-            from .bin import pencil4line_for_blender_win64_39 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 10:
-            from .bin import pencil4line_for_blender_win64_310 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-            if bpy.app.version < (4, 5, 0):
-                from .bin import pencil4line_for_blender_win64_311 as pencil4line_for_blender
-            elif bpy.app.version < (5, 0, 0):
-                from .bin import pencil4line_for_blender_win64_311_450 as pencil4line_for_blender
-            else:
-                from .bin import pencil4line_for_blender_win64_311_500 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 13:
-            from .bin import pencil4line_for_blender_win64_313 as pencil4line_for_blender
-    elif platform.system() == "Darwin":
-        if sys.version_info.major == 3 and sys.version_info.minor == 9:
-            from .bin import pencil4line_for_blender_mac_39 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 10:
-            from .bin import pencil4line_for_blender_mac_310 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-            if bpy.app.version < (4, 5, 0):
-                from .bin import pencil4line_for_blender_mac_311 as pencil4line_for_blender
-            elif bpy.app.version < (5, 0, 0):
-                from .bin import pencil4line_for_blender_mac_311_450 as pencil4line_for_blender
-            else:
-                from .bin import pencil4line_for_blender_mac_311_500 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 13:
-            from .bin import pencil4line_for_blender_mac_313 as pencil4line_for_blender
-    elif platform.system() == "Linux":
-        if sys.version_info.major == 3 and sys.version_info.minor == 9:
-            from .bin import pencil4line_for_blender_linux_39 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 10:
-            from .bin import pencil4line_for_blender_linux_310 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-            if bpy.app.version < (4, 5, 0):
-                from .bin import pencil4line_for_blender_linux_311 as pencil4line_for_blender
-            elif bpy.app.version < (5, 0, 0):
-                from .bin import pencil4line_for_blender_linux_311_450 as pencil4line_for_blender
-            else:
-                from .bin import pencil4line_for_blender_linux_311_500 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 13:
-            from .bin import pencil4line_for_blender_linux_313 as pencil4line_for_blender
+    from .misc import cpp_module_loader
+    pencil4line_for_blender = cpp_module_loader.load_cpp_module(__package__, ".bin")
     from . import pencil4_render_images
     from . import pencil4_render_session
     from .misc import gpu_utils
@@ -750,6 +709,7 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                     window.screen.areas[0].spaces[0].image = image
 
     def cleanup(self, context):
+        self.restore_render_image_settings(context)
         output_image = __class__.get_render_result_override_image()
         if output_image is not None:
             output_image.pack()
@@ -759,6 +719,14 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
         context.window.cursor_modal_restore()
         if self.animation:
             context.scene.frame_set(self.original_frame_current)
+    
+    def restore_render_image_settings(self, context):
+        if self.render_image_media_type_before_change is not None:
+            context.scene.render.image_settings.media_type = self.render_image_media_type_before_change
+            self.render_image_media_type_before_change = None
+        if self.render_image_file_format_before_change is not None:
+            context.scene.render.image_settings.file_format = self.render_image_file_format_before_change
+            self.render_image_file_format_before_change = None
 
     def modal(self, context, event):
         if event.type == 'ESC':
@@ -784,6 +752,14 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                             region = r
 
                 # Blenderのビューポートレンダリングを実行し、レンダリング結果を取得する
+                if getattr(bpy.context.scene.render.image_settings, "media_type", None) == "MULTI_LAYER_IMAGE":
+                    self.render_image_media_type_before_change = "MULTI_LAYER_IMAGE"
+                    self.render_image_file_format_before_change = bpy.context.scene.render.image_settings.file_format
+                    bpy.context.scene.render.image_settings.media_type = "IMAGE"
+                    bpy.context.scene.render.image_settings.file_format = "OPEN_EXR"
+                if bpy.context.scene.render.image_settings.file_format == "OPEN_EXR_MULTILAYER":
+                    self.render_image_file_format_before_change = "OPEN_EXR_MULTILAYER"
+                    bpy.context.scene.render.image_settings.file_format = "OPEN_EXR"
                 bpy.ops.render.opengl()
                 context.window.cursor_modal_set('WAIT')
                 render_image = next(image for image in bpy.data.images if image.type == "RENDER_RESULT")
@@ -798,14 +774,17 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                     output_image.source = "FILE"
                     output_image.alpha_mode = self.image_alpha_mode
                     output_image.filepath = frame_path
-                display_device = context.scene.display_settings.display_device
-                if (display_device in bpy.types.ColorManagedInputColorspaceSettings.bl_rna.properties["name"].enum_items and
-                    context.scene.view_settings.view_transform != "Raw"):
-                    output_image.colorspace_settings.name = display_device
+                if bpy.context.scene.render.image_settings.file_format == "OPEN_EXR":
+                    output_image.use_view_as_render = True
                 else:
-                    output_image.colorspace_settings.name = "Linear" if "Linear" in bpy.types.ColorManagedInputColorspaceSettings.bl_rna.properties["name"].enum_items else "Linear Rec.709"
-                    if context.scene.view_settings.view_transform == "Raw":
-                        output_image.use_view_as_render = True
+                    display_device = context.scene.display_settings.display_device
+                    if (display_device in bpy.types.ColorManagedInputColorspaceSettings.bl_rna.properties["name"].enum_items and
+                        context.scene.view_settings.view_transform != "Raw"):
+                        output_image.colorspace_settings.name = display_device
+                    else:
+                        output_image.colorspace_settings.name = "Linear" if "Linear" in bpy.types.ColorManagedInputColorspaceSettings.bl_rna.properties["name"].enum_items else "Linear Rec.709"
+                        if context.scene.view_settings.view_transform == "Raw":
+                            output_image.use_view_as_render = True
 
                 # ライン描画を実行する
                 if self.session is None:
@@ -861,6 +840,7 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                 self.cancel(context)
                 return {'CANCELLED'}
             output_image.save_render(frame_path)
+            self.restore_render_image_settings(context)
             if not self.animation or frame_current >= context.scene.frame_end:
                 self.cleanup(context)
                 return {'FINISHED'}
@@ -880,6 +860,8 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
         self.original_frame_current = context.scene.frame_current
         self.background_color = context.scene.pencil4_line_viewport_render_background_color
         self.enalbe_background_color = context.scene.pencil4_line_viewport_render_background_color_enable
+        self.render_image_media_type_before_change = None
+        self.render_image_file_format_before_change = None
         context.window_manager.modal_handler_add(self)
         context.window.cursor_modal_set('WAIT')
         __class__.__timer = context.window_manager.event_timer_add(0.01, window=context.window)

@@ -2,6 +2,7 @@
 # The Original Code is Copyright (C) P SOFTHOUSE Co., Ltd. All rights reserved.
 
 import bpy
+from collections import OrderedDict
 
 # このコードについて:
 # "Pencil+ Curve Helper Node Tree"というNodeTreeを裏で新規作成し、Float Curveノードを自動生成する。
@@ -75,13 +76,31 @@ def delete_curve_data(tree: bpy.types.NodeTree, curve_name):
 
 
 def evaluate_curve(tree: bpy.types.NodeTree, curve_name, length):
-    ret = [1.0] * length
-
     curve_data = get_curve_data(tree, curve_name)
-    if curve_data is not None:
-        curve_mapping = curve_data.mapping
-        for i in range(0, length):
-            position = i / (length - 1)
-            ret[i] = min(1.0, curve_mapping.evaluate(curve_mapping.curves[0], position))
-    
+    if curve_data is None:
+        return [1.0] * length
+
+    curve_mapping = curve_data.mapping
+    points = curve_mapping.curves[0].points
+    key = (length, tuple((p.location[0], p.location[1], p.handle_type) for p in points))
+
+    cached = _EVALUATE_CURVE_CACHE.get(key)
+    if cached is not None:
+        _EVALUATE_CURVE_CACHE.move_to_end(key)
+        return cached
+
+    ret = [1.0] * length
+    for i in range(0, length):
+        position = i / (length - 1)
+        ret[i] = min(1.0, curve_mapping.evaluate(curve_mapping.curves[0], position))
+
+    _EVALUATE_CURVE_CACHE[key] = ret
+    if len(_EVALUATE_CURVE_CACHE) > _EVALUATE_CURVE_CACHE_MAX:
+        _EVALUATE_CURVE_CACHE.popitem(last=False)
+
     return ret
+
+
+# evaluate_curve の結果キャッシュ (LRU)
+_EVALUATE_CURVE_CACHE_MAX = 256
+_EVALUATE_CURVE_CACHE: "OrderedDict[tuple, list]" = OrderedDict()

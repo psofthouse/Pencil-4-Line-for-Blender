@@ -1,61 +1,22 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # The Original Code is Copyright (C) P SOFTHOUSE Co., Ltd. All rights reserved.
 
-import sys
 import platform
 from mathutils import Matrix
 
 if "bpy" in locals():
     import importlib
+    importlib.reload(cpp_module_loader)
+    pencil4line_for_blender = cpp_module_loader.load_cpp_module(__package__, ".bin")
     importlib.reload(pencil4line_for_blender)
     importlib.reload(pencil4_render_images)
-    importlib.reload(cpp_ulits)
+    importlib.reload(cpp_utils)
 else:
     import bpy
-    if platform.system() == "Windows":
-        if sys.version_info.major == 3 and sys.version_info.minor == 9:
-            from .bin import pencil4line_for_blender_win64_39 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 10:
-            from .bin import pencil4line_for_blender_win64_310 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-            if bpy.app.version < (4, 5, 0): 
-                from .bin import pencil4line_for_blender_win64_311 as pencil4line_for_blender
-            elif bpy.app.version < (5, 0, 0):
-                from .bin import pencil4line_for_blender_win64_311_450 as pencil4line_for_blender
-            else:
-                from .bin import pencil4line_for_blender_win64_311_500 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 13:
-            from .bin import pencil4line_for_blender_win64_313 as pencil4line_for_blender
-    elif platform.system() == "Darwin":
-        if sys.version_info.major == 3 and sys.version_info.minor == 9:
-            from .bin import pencil4line_for_blender_mac_39 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 10:
-            from .bin import pencil4line_for_blender_mac_310 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-            if bpy.app.version < (4, 5, 0): 
-                from .bin import pencil4line_for_blender_mac_311 as pencil4line_for_blender
-            elif bpy.app.version < (5, 0, 0):
-                from .bin import pencil4line_for_blender_mac_311_450 as pencil4line_for_blender
-            else:
-                from .bin import pencil4line_for_blender_mac_311_500 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 13:
-            from .bin import pencil4line_for_blender_mac_313 as pencil4line_for_blender
-    elif platform.system() == "Linux":
-        if sys.version_info.major == 3 and sys.version_info.minor == 9:
-            from .bin import pencil4line_for_blender_linux_39 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 10:
-            from .bin import pencil4line_for_blender_linux_310 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-            if bpy.app.version < (4, 5, 0):
-                from .bin import pencil4line_for_blender_linux_311 as pencil4line_for_blender
-            elif bpy.app.version < (5, 0, 0):
-                from .bin import pencil4line_for_blender_linux_311_450 as pencil4line_for_blender
-            else:
-                from .bin import pencil4line_for_blender_linux_311_500 as pencil4line_for_blender
-        elif sys.version_info.major == 3 and sys.version_info.minor == 13:
-            from .bin import pencil4line_for_blender_linux_313 as pencil4line_for_blender
+    from .misc import cpp_module_loader
+    pencil4line_for_blender = cpp_module_loader.load_cpp_module(__package__, ".bin")
     from . import pencil4_render_images
-    from .misc import cpp_ulits
+    from .misc import cpp_utils
 
 from .node_tree import PencilNodeTree
 from .node_tree.misc.DataUtils import line_object_types
@@ -209,6 +170,7 @@ class Pencil4RenderSession:
         render_instances = []
         ungrouped_objects = set()
         mesh_color_attributes = {}
+        object_to_mesh_dict = {}
 
         system_tessellated_objects = set()
         object_instance: bpy.types.DepsgraphObjectInstance
@@ -242,15 +204,19 @@ class Pencil4RenderSession:
             elif obj.type in line_object_types:
                 if src_object in system_tessellated_objects:
                     continue
-                mesh = obj.to_mesh(preserve_all_data_layers=True, depsgraph=depsgraph)
-                if mesh is None:
-                    continue
-                if obj.type == "CURVE" and len(mesh.polygons) == 0:
-                    # カーブをメッシュに変換したとき、押し出し量が0の場合だとエッジのみが生成されポリゴンは生成されない
-                    # このとき、もともとのカーブに付随していたマテリアルの情報は失われてしまう
-                    # ライン描画にはマテリアルの情報が必要になる場合もあるので、欠損した情報を付加する必要がある
-                    curve: bpy.types.Curve = obj.data
-                    self.__curve_data[mesh] = pencil4line_for_blender.interm_curve_data(curve.materials, [x.material_index for x in curve.splines])
+                if obj in object_to_mesh_dict:
+                    mesh = object_to_mesh_dict[obj]
+                else:
+                    mesh = obj.to_mesh(preserve_all_data_layers=True, depsgraph=depsgraph)
+                    if mesh is None:
+                        continue
+                    object_to_mesh_dict[obj] = mesh
+                    if obj.type == "CURVE" and len(mesh.polygons) == 0:
+                        # カーブをメッシュに変換したとき、押し出し量が0の場合だとエッジのみが生成されポリゴンは生成されない
+                        # このとき、もともとのカーブに付随していたマテリアルの情報は失われてしまう
+                        # ライン描画にはマテリアルの情報が必要になる場合もあるので、欠損した情報を付加する必要がある
+                        curve: bpy.types.Curve = obj.data
+                        self.__curve_data[mesh] = pencil4line_for_blender.interm_curve_data(curve.materials, [x.material_index for x in curve.splines])
             
             if mesh is not None:
                 override_library = src_object.override_library
@@ -406,7 +372,7 @@ def create_previews(preview_size: int,
             node_dict[brush_map_node] = pencil4line_for_blender.texture_map_node()
         
     for py_node, cpp_node in node_dict.items():
-        cpp_ulits.copy_props(py_node, cpp_node, node_dict, context=bpy.context)
+        cpp_utils.copy_props(py_node, cpp_node, node_dict, context=bpy.context)
 
     pencil4line_for_blender.set_blender_version(bpy.app.version[0], bpy.app.version[1], bpy.app.version[2])
     pencil4line_for_blender.set_render_app_path(bpy.context.preferences.addons[__package__].preferences.render_app_path)

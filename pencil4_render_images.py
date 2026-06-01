@@ -3,14 +3,14 @@
 
 if "bpy" in locals():
     import importlib
-    importlib.reload(cpp_ulits)
+    importlib.reload(cpp_utils)
     importlib.reload(compositing_utils)
+    importlib.reload(cpp_module_loader)
 else:
-    from .misc import cpp_ulits
+    from .misc import cpp_utils
     from .misc import compositing_utils
+    from .misc import cpp_module_loader
 
-import sys
-import platform
 import os
 import re
 from typing import Tuple
@@ -20,48 +20,7 @@ from typing import Iterable
 
 from .misc.compositing_utils import get_compositing_node_group_from_scene
 
-if platform.system() == "Windows":
-    if sys.version_info.major == 3 and sys.version_info.minor == 9:
-        from .bin import pencil4line_for_blender_win64_39 as cpp
-    elif sys.version_info.major == 3 and sys.version_info.minor == 10:
-        from .bin import pencil4line_for_blender_win64_310 as cpp
-    elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-        if bpy.app.version < (4, 5, 0):
-            from .bin import pencil4line_for_blender_win64_311 as cpp
-        elif bpy.app.version < (5, 0, 0):
-            from .bin import pencil4line_for_blender_win64_311_450 as cpp
-        else:
-            from .bin import pencil4line_for_blender_win64_311_500 as cpp
-    elif sys.version_info.major == 3 and sys.version_info.minor == 13:
-        from .bin import pencil4line_for_blender_win64_313 as cpp
-elif platform.system() == "Darwin":
-    if sys.version_info.major == 3 and sys.version_info.minor == 9:
-        from .bin import pencil4line_for_blender_mac_39 as cpp
-    elif sys.version_info.major == 3 and sys.version_info.minor == 10:
-        from .bin import pencil4line_for_blender_mac_310 as cpp
-    elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-        if bpy.app.version < (4, 5, 0):
-            from .bin import pencil4line_for_blender_mac_311 as cpp
-        elif bpy.app.version < (5, 0, 0):
-            from .bin import pencil4line_for_blender_mac_311_450 as cpp
-        else:
-            from .bin import pencil4line_for_blender_mac_311_500 as cpp
-    elif sys.version_info.major == 3 and sys.version_info.minor == 13:
-        from .bin import pencil4line_for_blender_mac_313 as cpp
-elif platform.system() == "Linux":
-    if sys.version_info.major == 3 and sys.version_info.minor == 9:
-        from .bin import pencil4line_for_blender_linux_39 as cpp
-    elif sys.version_info.major == 3 and sys.version_info.minor == 10:
-        from .bin import pencil4line_for_blender_linux_310 as cpp
-    elif sys.version_info.major == 3 and sys.version_info.minor == 11:
-        if bpy.app.version < (4, 5, 0):
-            from .bin import pencil4line_for_blender_linux_311 as cpp
-        elif bpy.app.version < (5, 0, 0):
-            from .bin import pencil4line_for_blender_linux_311_450 as cpp
-        else:
-            from .bin import pencil4line_for_blender_linux_311_500 as cpp
-    elif sys.version_info.major == 3 and sys.version_info.minor == 13:
-        from .bin import pencil4line_for_blender_linux_313 as cpp
+cpp = cpp_module_loader.load_cpp_module(__package__, ".bin")
 
 
 IMAGE_NAME_PREFIX = "Pencil+ 4."
@@ -349,7 +308,7 @@ def enumerate_images_from_compositor_nodes(view_layer: bpy.types.ViewLayer, chec
             elif view_layer.pencil4_line_outputs.contains_in_render_elements(image):
                 py_element = view_layer.pencil4_line_outputs.get_render_element_from_image(image)
                 cpp_element = cpp.line_render_element()
-                cpp_ulits.copy_props(py_element, cpp_element)
+                cpp_utils.copy_props(py_element, cpp_element)
                 cpp_element._image = image
                 element_dict[image] = cpp_element
 
@@ -366,7 +325,7 @@ def enumerate_vector_outputs_from_compositor_nodes(view_layer: bpy.types.ViewLay
                     if not py_output.on:
                         continue
                     cpp_output = cpp.vector_output()
-                    cpp_ulits.copy_props(py_output, cpp_output)
+                    cpp_utils.copy_props(py_output, cpp_output)
 
                     dir = os.path.dirname(cpp_output.output_path)
                     if create_folder:
