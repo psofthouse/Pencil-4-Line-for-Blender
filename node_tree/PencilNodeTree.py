@@ -439,12 +439,12 @@ class PCL4_OT_Merge_mixin(PCL4_OT_CleanupListsInLineSetNodes_mixin):
             # 既存のワークスペースにノードツリーが存在しない場合、一時的にワークスペースを追加する
             if not check_context(override["space_data"], override["area"]):
                 workspace_prev = context.workspace
-                path = next((x for x in Path(__file__).parents if x.name == "psoft_pencil4_line"), None)
-                if path is None:
+                workspace_blend = Path(__file__).resolve().parents[1] / "resources" / "workspace.blend"
+                if not workspace_blend.is_file():
                     return {"CANCELLED"}
                 success = bpy.ops.workspace.append_activate(
                     idname="Pencil+ 4 Line",
-                    filepath=str(path / "resources" / "workspace.blend"))
+                    filepath=str(workspace_blend))
                 if success != {"FINISHED"}:
                     return {"CANCELLED"}
                 override_context()

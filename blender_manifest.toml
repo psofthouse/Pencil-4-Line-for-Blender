@@ -1,0 +1,19 @@
+schema_version = "1.0.0"
+id = "psoft_pencil4_line"
+version = "4.1.9"
+name = "PSOFT Pencil+ 4 Line"
+tagline = "High-quality lines in Blender"
+maintainer = "P SOFTHOUSE"
+type = "add-on"
+blender_version_min = "4.2.0"
+license = [
+  "SPDX:GPL-2.0-or-later",
+]
+website = "https://github.com/psofthouse/Pencil-4-Line-for-Blender"
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  ".git/",
+  "*.zip",
+]

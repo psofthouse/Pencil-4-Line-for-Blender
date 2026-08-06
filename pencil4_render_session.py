@@ -108,7 +108,9 @@ class Pencil4RenderSession:
             clip_start = -3e38
             clip_end = 3e38
         draw_option = self.get_draw_option(new_if_none = False)
-        camera_matrix = region_3d.view_matrix.inverted()
+        camera_matrix = region_3d.view_matrix.inverted(False)
+        if camera_matrix is False:
+            return pencil4line_for_blender.draw_ret.error_unknown
         window_matrix = region_3d.window_matrix
         if matrix_override is not None:
             camera_matrix, window_matrix = matrix_override(camera_matrix, window_matrix)

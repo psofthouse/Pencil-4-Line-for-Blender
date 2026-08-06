@@ -50,7 +50,18 @@ def unregister():
 #################################################
 
 def get_all_submodules(directory):
-    return list(iter_submodules(directory, directory.name))
+    package_name = resolve_package_name(directory)
+    return list(iter_submodules(directory, package_name))
+
+def resolve_package_name(directory):
+    # In Blender extension mode, the import package can differ from the on-disk folder name.
+    if __package__:
+        return __package__
+
+    if __spec__ is not None and __spec__.parent:
+        return __spec__.parent
+
+    return directory.name
 
 def iter_submodules(path, package_name):
     for name in sorted(iter_submodule_names(path)):
