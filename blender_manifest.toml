@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "psoft_pencil4_line"
-version = "4.1.9"
+version = "4.2.0"
 name = "PSOFT Pencil+ 4 Line"
 tagline = "High-quality lines in Blender"
 maintainer = "P SOFTHOUSE"

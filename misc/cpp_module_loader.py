@@ -33,7 +33,10 @@ def _get_cpp_module_name() -> str:
         else:
             python_suffix = "311_500"
     elif py_ver == (3, 13):
-        python_suffix = "313"
+        if bpy.app.version < (5, 2, 1):
+            python_suffix = "313"
+        else:
+            python_suffix = "313_521"
     else:
         raise ImportError(
             "Unsupported Python version for Pencil+ 4 binary module: "

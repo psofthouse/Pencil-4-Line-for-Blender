@@ -4,9 +4,9 @@
 bl_info = {
     "name": "PSOFT Pencil+ 4 Line",
     "author": "P SOFTHOUSE",
-    "description": "High-quality lines in Blender [d279d3ed]",
+    "description": "High-quality lines in Blender [57928db6]",
     "blender": (3, 0, 0),
-    "version": (4, 1, 9),
+    "version": (4, 2, 0),
     "location": "",
     "warning": "",
     "category": "Generic",
