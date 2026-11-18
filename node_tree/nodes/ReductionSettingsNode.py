@@ -24,10 +24,20 @@ class ReductionSettingsNode(bpy.types.Node, PencilNodeMixin):
     def init(self, context):
         super().init()
         self.outputs.new(ReductionSettingsSocket.bl_idname, "Output")
-        self.curve = self.create_curve_data([[0.0, 1.0], [0.2, 0.4], [1.0, 0.1]])
+        self.curve = self.create_curve_data(self.get_default_curve_data())
+
+    def copy(self, node):
+        if self.tree_from_node() is None:
+            self.tmp_copy_source_curve_tree = node.tree_from_node().curve_node_tree
+            return
+        self.curve = self.copy_curve_data(node, "curve")
 
     def free(self):
         self.delete_curve_data("curve")
 
     def draw_socket(self, socket, context, layout, text):
         layout.label(text=socket.name, text_ctxt=Translation.ctxt)
+
+    @classmethod
+    def get_default_curve_data(cls):
+        return [[0.0, 1.0], [0.2, 0.4], [1.0, 0.1]]

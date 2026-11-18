@@ -261,9 +261,41 @@ class PencilNodeTree(bpy.types.NodeTree):
 
     @classmethod
     def correct_curve_tree(cls):
+        curve_names_dict = {}
+        curve_references = {}
         for tree in cls.enumerate_entity_trees():
+            # Ensure the tree has a valid curve node tree
             if tree.curve_node_tree is None:
                 tree.curve_node_tree = PencilCurves.default_tree(create_if_none=False)
+            # Correct the curve names for this curve node tree
+            curve_names = curve_names_dict.setdefault(tree.curve_node_tree, set())
+            for node in tree.nodes:
+                if isinstance(node, ReductionSettingsNode):
+                    curve_attrs = ("curve",)
+                elif isinstance(node, BrushDetailNode):
+                    curve_attrs = ("size_reduction_curve", "alpha_reduction_curve")
+                else:
+                    continue
+                for curve_attr in curve_attrs:
+                    curve_name = getattr(node, curve_attr)
+                    if node.get_curve_data(curve_name) is None:
+                        setattr(node, curve_attr, node.create_curve_data(node.__class__.get_default_curve_data()))
+                    elif curve_name in curve_names:
+                        setattr(node, curve_attr, node.copy_curve_data(node, curve_attr))
+                    else:
+                        curve_names.add(curve_name)
+                    curve_references.setdefault(tree.curve_node_tree, []).append((node, curve_attr))
+
+        linked_curve_trees = {tree.curve_node_tree for tree in cls.enumerate_trees() if not tree.is_entity()}
+        for curve_tree, references in curve_references.items():
+            if curve_tree in linked_curve_trees:
+                continue
+            curve_names = {getattr(node, curve_attr) for node, curve_attr in references}
+            renamed = PencilCurves.randomize_curve_names(curve_tree, curve_names)
+            for node, curve_attr in references:
+                curve_name = getattr(node, curve_attr)
+                if curve_name in renamed:
+                    setattr(node, curve_attr, renamed[curve_name])
 
     @classmethod
     def migrate_nodes(cls):
@@ -470,41 +502,28 @@ class PCL4_OT_Merge_mixin(PCL4_OT_CleanupListsInLineSetNodes_mixin):
         # リストのクリーンアップ
         super().execute(context)
 
-        # カーブノードツリーが異なる場合、カーブノードをコピーする
-        if src_tree.curve_node_tree is not None and src_tree.curve_node_tree != dst_tree.curve_node_tree:
-            curve_props = set()
-            for node in src_tree.nodes:
-                for prop_name in (x for x in dir(node) if "curve" in x):
-                    value = getattr(node, prop_name)
-                    curve = PencilCurves.get_curve_data(src_tree.curve_node_tree, value) if type(value) is str else None
-                    if curve is not None:
-                        curve_props.add((node, prop_name, curve))
-            if len(curve_props) > 0:
-                if dst_tree.curve_node_tree is None:
-                    dst_tree.curve_node_tree = PencilCurves.default_tree()
-                for node, prop_name, src_curve in curve_props:
-                    locations = list(x.location for x in src_curve.mapping.curves[0].points)
-                    dst_curve = PencilCurves.create_curve_data(dst_tree.curve_node_tree, locations=locations)
-                    setattr(node, prop_name, dst_curve)
-
         # ノードのコピー
         if len(src_tree.nodes) > 0:
             prev_tree = context.space_data.node_tree
-            context.space_data.node_tree = src_tree
-            bpy.ops.node.select_all(action='SELECT')
-            bpy.ops.node.clipboard_copy()
+            prev_curve_tree = PencilCurves.tmp_merge_source_curve_tree
+            try:
+                PencilCurves.tmp_merge_source_curve_tree = src_tree.curve_node_tree
+                context.space_data.node_tree = src_tree
+                bpy.ops.node.select_all(action='SELECT')
+                bpy.ops.node.clipboard_copy()
 
-            context.space_data.node_tree = dst_tree
-            if self.replace_same_name_lines:
-                src_line_names = set(x.name for x in src_tree.enumerate_lines())
-                remove_lines = [x for x in dst_tree.enumerate_all_lines() if x.name in src_line_names]
-                for remove_line in remove_lines:
-                    dst_tree.set_selected_line(remove_line)
-                    bpy.ops.pcl4.line_list_remove_item()
-            bpy.ops.node.select_all(action="DESELECT")
-            bpy.ops.node.clipboard_paste()
-
-            context.space_data.node_tree = prev_tree
+                context.space_data.node_tree = dst_tree
+                if self.replace_same_name_lines:
+                    src_line_names = set(x.name for x in src_tree.enumerate_lines())
+                    remove_lines = [x for x in dst_tree.enumerate_all_lines() if x.name in src_line_names]
+                    for remove_line in remove_lines:
+                        dst_tree.set_selected_line(remove_line)
+                        bpy.ops.pcl4.line_list_remove_item()
+                bpy.ops.node.select_all(action="DESELECT")
+                bpy.ops.node.clipboard_paste()
+            finally:
+                PencilCurves.tmp_merge_source_curve_tree = prev_curve_tree
+                context.space_data.node_tree = prev_tree
 
         # ノードツリーの選択状態の変更
         for workspace in bpy.data.workspaces:

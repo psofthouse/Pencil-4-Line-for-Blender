@@ -27,6 +27,52 @@ _KIND_UNKNOWN           = 14  # 転送条件漏れ
 _PROP_CACHE = {}
 
 
+def get_rna_function_index(class_name: str, function_name: str) -> int:
+    """Return the zero-based index among functions defined by this RNA class."""
+    rna_class = getattr(bpy.types, class_name, None)
+    if rna_class is None:
+        return -1
+
+    rna_struct = rna_class.bl_rna
+    inherited_identifiers = set()
+    base = rna_struct.base
+    while base is not None:
+        inherited_identifiers.update(function.identifier for function in base.functions)
+        base = base.base
+
+    index = 0
+    for function in rna_struct.functions:
+        if function.identifier in inherited_identifiers:
+            continue
+        if function.identifier == function_name:
+            return index
+        index += 1
+    return -1
+
+
+def get_rna_property_index(class_name: str, property_name: str) -> int:
+    """Return the zero-based index among properties defined by this RNA class."""
+    rna_class = getattr(bpy.types, class_name, None)
+    if rna_class is None:
+        return -1
+
+    rna_struct = rna_class.bl_rna
+    inherited_identifiers = set()
+    base = rna_struct.base
+    while base is not None:
+        inherited_identifiers.update(prop.identifier for prop in base.properties)
+        base = base.base
+
+    index = 0
+    for prop in rna_struct.properties:
+        if prop.identifier in inherited_identifiers:
+            continue
+        if prop.identifier == property_name:
+            return index
+        index += 1
+    return -1
+
+
 # ---- kind 別プロファイラ -------------------------------------------------
 # copy_props のループ内で、どの kind に時間が掛かっているかを計測するための仕組み。
 # 通常運用では _PROFILE_ENABLED = False のままにする (計測コードを通らない)。

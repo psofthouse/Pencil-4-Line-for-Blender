@@ -154,8 +154,15 @@ class BrushDetailNode(bpy.types.Node, PencilNodeMixin):
         self.outputs.new(BrushDetailSocket.bl_idname, "Output")
         self.inputs.new(TextureMapSocket.bl_idname, "Brush Map", identifier=BRUSH_MAP_SOCKET_ID)
         self.inputs.new(TextureMapSocket.bl_idname, "Distortion Map", identifier=DISTORTION_MAP_SOCKET_ID)
-        self.size_reduction_curve = self.create_curve_data([[0.0, 0.25], [0.5, 1.0], [1.0, 0.25]])
-        self.alpha_reduction_curve = self.create_curve_data([[0.0, 0.25], [0.5, 1.0], [1.0, 0.25]])
+        self.size_reduction_curve = self.create_curve_data(self.get_default_curve_data())
+        self.alpha_reduction_curve = self.create_curve_data(self.get_default_curve_data())
+
+    def copy(self, node):
+        if self.tree_from_node() is None:
+            self.tmp_copy_source_curve_tree = node.tree_from_node().curve_node_tree
+            return
+        self.size_reduction_curve = self.copy_curve_data(node, "size_reduction_curve")
+        self.alpha_reduction_curve = self.copy_curve_data(node, "alpha_reduction_curve")
 
     def free(self):
         self.delete_curve_data("size_reduction_curve")
@@ -174,3 +181,7 @@ class BrushDetailNode(bpy.types.Node, PencilNodeMixin):
             (id == DISTORTION_MAP_SOCKET_ID and not AttrOverride.get_overrided_attr(self, "distortion_enabled", context=context, depsgraph=depsgraph)):
             return ""
         return super().filtered_socket_id(id, context=context, depsgraph=depsgraph)
+    
+    @classmethod
+    def get_default_curve_data(cls):
+        return [[0.0, 0.25], [0.5, 1.0], [1.0, 0.25]]

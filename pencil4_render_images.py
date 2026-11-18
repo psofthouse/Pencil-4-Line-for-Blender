@@ -51,7 +51,8 @@ class OutputImage(bpy.types.PropertyGroup):
     
     def rename(self, name:str):
         if self.main is not None and self.main.name != name and self.main.name != "" and not self.main.name.startswith(name + "."):
-            self.main.name = name
+            if self.main.library is None:
+                self.main.name = name
 
     def correct_duplicated_output_images(self, images: set):
         if self.main is not None:
@@ -147,7 +148,7 @@ class ViewLayerLineOutputs(bpy.types.PropertyGroup):
     render_elements: bpy.props.CollectionProperty(type=RenderElement)
     vector_outputs: bpy.props.CollectionProperty(type=VectorOutput)
     vector_output_selected_index: bpy.props.IntProperty(options={"HIDDEN", "SKIP_SAVE"})
-    vector_output_base_path: bpy.props.StringProperty(subtype="DIR_PATH")
+    vector_output_base_path: bpy.props.StringProperty(subtype="DIR_PATH", options={"PATH_SUPPORTS_BLEND_RELATIVE"} if bpy.app.version >= (4, 5, 0) else set())
 
     fix_output_after_load: bpy.props.BoolProperty(default=True)
 
@@ -262,7 +263,7 @@ def setup_images(scene: bpy.types.Scene):
 
 def unpack_images(scene: bpy.types.Scene):
     def unpack_image(image: bpy.types.Image):
-        if image is not None:
+        if image is not None and image.library is None:
             image.pack()
             if image.packed_file is not None:
                 image.unpack(method='REMOVE')

@@ -15,6 +15,8 @@ class PencilNodeMixin:
     new_node_offset_y = 0
     new_node_step_y = -80
 
+    tmp_copy_source_curve_tree: bpy.props.PointerProperty(type=bpy.types.NodeTree, options={'HIDDEN', 'SKIP_SAVE'})
+
     @classmethod
     def poll(cls, node_tree):
         return node_tree.bl_idname == cls.target_node_tree_type
@@ -112,11 +114,71 @@ class PencilNodeMixin:
             tree.curve_node_tree = PencilCurves.default_tree()
         return PencilCurves.create_curve_data(tree.curve_node_tree, locations)
 
+    def copy_curve_data(self, src_node, attr_name):
+        curve = src_node.get_curve_data(getattr(src_node, attr_name))
+        if curve is None:
+            curve = PencilCurves.get_curve_data(PencilCurves.tmp_merge_source_curve_tree,
+                                               getattr(src_node, attr_name))
+        if curve is None:
+            curve = self.find_matching_curve_data(src_node, attr_name)
+        if curve is None:
+            return self.create_curve_data(self.get_default_curve_data())
+        tree = self.tree_from_node()
+        if tree is None:
+            return
+        if tree.curve_node_tree is None:
+            tree.curve_node_tree = PencilCurves.default_tree()
+        return PencilCurves.copy_curve_data(tree.curve_node_tree, curve)
+
+    def find_matching_curve_data(self, src_node, attr_name):
+        curve_name = getattr(src_node, attr_name)
+        candidates = []
+        for tree in bpy.data.node_groups:
+            if tree.bl_idname != src_node.target_node_tree_type or tree.curve_node_tree is None:
+                continue
+            node = tree.nodes.get(src_node.name)
+            if node is None or node == self or type(node) is not type(src_node):
+                continue
+            if getattr(node, attr_name) != curve_name:
+                continue
+            curve = PencilCurves.get_curve_data(tree.curve_node_tree, curve_name)
+            if curve is not None:
+                candidates.append((node, curve))
+        if not candidates:
+            return
+        if len(candidates) == 1:
+            return candidates[0][1]
+
+        properties = {}
+        for node_class in reversed(type(src_node).__mro__):
+            properties.update(node_class.__dict__.get("__annotations__", {}))
+        source_values = {}
+        for name, definition in properties.items():
+            keywords = getattr(definition, "keywords", None)
+            if keywords is None or "get" in keywords:
+                continue
+            prop = src_node.bl_rna.properties.get(name)
+            if prop is None or prop.type not in {'BOOLEAN', 'INT', 'FLOAT', 'STRING', 'ENUM'}:
+                continue
+            value = getattr(src_node, name)
+            is_array = getattr(prop, "is_array", False)
+            source_values[name] = (tuple(value) if is_array else value, is_array)
+
+        def match_score(candidate):
+            node, curve = candidate
+            return sum((tuple(getattr(node, name)) if is_array else getattr(node, name)) == value
+                       for name, (value, is_array) in source_values.items())
+
+        return max(candidates, key=match_score)[1]
+
     def get_curve_data(self, curve_name):
         tree = self.tree_from_node()
-        if tree is None or tree.curve_node_tree is None:
+        curve_tree = tree.curve_node_tree if tree is not None else None
+        if curve_tree is None:
+            curve_tree = self.tmp_copy_source_curve_tree
+        if curve_tree is None:
             return
-        return PencilCurves.get_curve_data(tree.curve_node_tree, curve_name)
+        return PencilCurves.get_curve_data(curve_tree, curve_name)
 
     def delete_curve_data(self, curve_prop_name:str):
         tree = self.tree_from_node()

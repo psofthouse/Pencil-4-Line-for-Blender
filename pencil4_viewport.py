@@ -10,6 +10,7 @@ if "bpy" in locals():
     importlib.reload(pencil4line_for_blender)
     importlib.reload(pencil4_render_images)
     importlib.reload(pencil4_render_session)
+    importlib.reload(pencil4_lens_remap)
     importlib.reload(gpu_utils)
     importlib.reload(Translation)
     __is_reloaded = True
@@ -19,6 +20,7 @@ else:
     pencil4line_for_blender = cpp_module_loader.load_cpp_module(__package__, ".bin")
     from . import pencil4_render_images
     from . import pencil4_render_session
+    from . import pencil4_lens_remap
     from .misc import gpu_utils
     from .i18n import Translation
 
@@ -89,6 +91,7 @@ class ViewportLineRenderManager:
         for session in dict_value.render_session_dict.values():
             if session.registered_timer_func:
                 bpy.app.timers.unregister(session.registered_timer_func)
+            session.clear_texture_caches()
         dict_value.render_session_dict.clear()
         return modified
 
@@ -211,7 +214,8 @@ class ViewportLineRenderManager:
         regions.append(space.region_3d)
         del_keys = list(x for x in dict_value.render_session_dict if not x in regions)
         for key in del_keys:
-            dict_value.render_session_dict.pop(key)
+            session = dict_value.render_session_dict.pop(key)
+            session.clear_texture_caches()
         if dict_value.render_session_dict.get(region_3d) is None:
             session = RenderSession()
             dict_value.render_session_dict[region_3d] = session
@@ -268,14 +272,19 @@ class ViewportLineRenderManager:
         region: bpy.types.Region = bpy.context.region
         region_3d: bpy.types.RegionView3D = bpy.context.region_data
         render_session = cls.get_render_session(space, region_3d)
-        pixels = None
+        viewport_data = None
+        lens_data = None
         width = region.width
         height = region.height
         draw_texture_origin = None
         draw_texture_size = None
 
+        # 非線形レンズ（パノラマ・魚眼）のカメラビューは専用経路で描画する。未対応のレンズはライン描画を行わない
+        lens_camera = _get_nonlinear_lens_camera(space, region_3d, bpy.context.scene)
+        lens_unsupported = lens_camera is not None and not pencil4_lens_remap.is_supported_camera(lens_camera.data)
+
         #　ライン描画の実行
-        if render_session.render_mode >= 0 and render_session.render_mode != cls.RenderMode.Wait:
+        if not lens_unsupported and render_session.render_mode >= 0 and render_session.render_mode != cls.RenderMode.Wait:
             if cls.in_render_session or PCL4_OT_ViewportRender.is_rendering():
                 # Blenderのレンダリング実行中/ビューポートレンダリング出力中は強制的にライン描画を待機状態にする
                 render_session.render_mode = cls.RenderMode.Wait
@@ -290,7 +299,7 @@ class ViewportLineRenderManager:
                     bpy.context.preferences.addons[__package__].preferences.viewport_render_timeout
                 draw_option.objects_cache_valid = render_session.objects_cache_valid if render_session.render_mode != cls.RenderMode.Initialize else False
                 matrix_override_func = None
-                if region_3d.view_perspective == "CAMERA" and settings.camera_view_range == "CAMERA_AREA":
+                if region_3d.view_perspective == "CAMERA" and (lens_camera is not None or settings.camera_view_range == "CAMERA_AREA"):
                     width, height = pencil4_render_session.get_render_size(depsgraph)
                     border = cls.camera_border(bpy.context.scene, region, space, region_3d)
                     draw_texture_origin = (border[2][0] / region.width, border[1][1] / region.height)
@@ -315,11 +324,15 @@ class ViewportLineRenderManager:
                     draw_option.linesize_relative_target_height = 0
                     draw_option.linesize_absolute_scale = bpy.context.preferences.system.ui_scale / bpy.context.preferences.view.ui_scale
 
-                draw_ret = render_session.draw_line_for_viewport(depsgraph, width, height, space, region_3d, matrix_override_func)
+                if lens_camera is not None:
+                    draw_ret, lens_data = render_session.draw_line_for_viewport_lens(depsgraph, width, height, space, region_3d, lens_camera)
+                else:
+                    draw_ret = render_session.draw_line_for_viewport(depsgraph, width, height, space, region_3d, matrix_override_func)
                 render_session.cleanup_frame()
 
                 if draw_ret == pencil4line_for_blender.draw_ret.success or draw_ret == pencil4line_for_blender.draw_ret.success_without_license:
-                    pixels = render_session.get_viewport_image_buffer()
+                    if lens_camera is None:
+                        viewport_data = render_session.get_viewport_line_data(width, height)
                     render_session.render_mode = cls.RenderMode.Normal
                     render_session.objects_cache_valid = True
                 elif draw_ret == pencil4line_for_blender.draw_ret.timeout:
@@ -352,7 +365,10 @@ class ViewportLineRenderManager:
                 gpu.matrix.load_matrix(Matrix.Identity(4))
                 gpu.matrix.load_projection_matrix(Matrix.Identity(4))
 
-                draw_line = pixels is not None and len(pixels) == width * height * 4
+                if lens_camera is not None:
+                    draw_line = lens_data is not None
+                else:
+                    draw_line = viewport_data is not None
 
                 if settings.enalbe_background_color:
                     color = list(settings.background_color)
@@ -363,12 +379,14 @@ class ViewportLineRenderManager:
                     gpu.state.blend_set("ALPHA")
                     __class__.__draw_color(space, color)
 
-                if draw_line:
-                    pixels = gpu.types.Buffer("FLOAT", width * height * 4, pixels)
-                    tex = gpu.types.GPUTexture((width, height), data=pixels)
+                if draw_line and lens_camera is not None:
                     gpu.state.blend_set("ALPHA")
-                    __class__.__draw_texture(space, tex, draw_texture_origin, draw_texture_size)
-                    del tex
+                    cls.draw_lens_line_data(space, lens_data, width, height, render_session,
+                                            draw_texture_origin, draw_texture_size)
+                elif draw_line:
+                    gpu.state.blend_set("ALPHA")
+                    cls.draw_viewport_line_data(viewport_data, width, height, render_session,
+                                                lambda tex: __class__.__draw_texture(space, tex, draw_texture_origin, draw_texture_size))
 
     @staticmethod
     def __create_shader(vertex_source:str,
@@ -461,6 +479,75 @@ class ViewportLineRenderManager:
             )
         return __class__.__draw_tex_shader
     
+    __draw_lens_shader = None
+    @staticmethod
+    def __get_draw_lens_shader():
+        # 非線形レンズ用。LUT を読んで6面のいずれかを4点バイリニア補間する
+        if __class__.__draw_lens_shader is None:
+            params = gpu_utils.ShaderParameters()
+            params.add_constant("VEC2", "origin")
+            params.add_constant("VEC2", "size")
+            for face_index in range(6):
+                params.add_sampler("FLOAT_2D", f"faceTex{face_index}")
+            params.add_sampler("FLOAT_2D", "lutTex")
+            params.add_constant("FLOAT", "applyColorCorrection")
+            params.add_vert_output("VEC2", "uvInterp")
+            __class__.__draw_lens_shader = __class__.__create_shader(
+                '''
+                void main()
+                {
+                    gl_Position = viewProjectionMatrix * vec4((pos - vec2(-1, -1)) * size + 2 * origin + vec2(-1, -1), 0.0, 1.0);
+                    uvInterp = pos * 0.5 + 0.5;
+                }
+                ''',
+                '''
+                vec4 sampleFace(int faceIndex, ivec2 coord)
+                {
+                    if (faceIndex == 0) return texelFetch(faceTex0, coord, 0);
+                    if (faceIndex == 1) return texelFetch(faceTex1, coord, 0);
+                    if (faceIndex == 2) return texelFetch(faceTex2, coord, 0);
+                    if (faceIndex == 3) return texelFetch(faceTex3, coord, 0);
+                    if (faceIndex == 4) return texelFetch(faceTex4, coord, 0);
+                    return texelFetch(faceTex5, coord, 0);
+                }
+                void main()
+                {
+                    ivec2 lutSize = textureSize(lutTex, 0);
+                    ivec2 p = clamp(ivec2(uvInterp * vec2(lutSize)), ivec2(0), lutSize - ivec2(1));
+                    vec4 lut = texelFetch(lutTex, p, 0);
+                    if (lut.x < 0.0)
+                    {
+                        FragColor = vec4(0.0);
+                        return;
+                    }
+                    ivec2 atlasBase = ivec2(lut.xy + 0.5);
+                    ivec2 faceCell = atlasBase / textureSize(faceTex0, 0);
+                    int faceIndex = faceCell.y * 3 + faceCell.x;
+                    ivec2 faceBase = atlasBase - faceCell * textureSize(faceTex0, 0);
+                    ivec2 faceMax = textureSize(faceTex0, 0) - ivec2(1);
+                    vec4 c00 = sampleFace(faceIndex, faceBase);
+                    vec4 c10 = sampleFace(faceIndex, min(faceBase + ivec2(1, 0), faceMax));
+                    vec4 c01 = sampleFace(faceIndex, min(faceBase + ivec2(0, 1), faceMax));
+                    vec4 c11 = sampleFace(faceIndex, min(faceBase + ivec2(1, 1), faceMax));
+                    vec4 color = mix(mix(c00, c10, lut.z), mix(c01, c11, lut.z), lut.w);
+                    FragColor = applyColorCorrection > 0.5 ? correct_color_for_framebuffer_space(color) : color;
+                }
+                ''',
+                params
+            )
+        return __class__.__draw_lens_shader
+
+    __lens_lut_texture_source = None
+    __lens_lut_texture = None
+    @staticmethod
+    def __get_lens_lut_texture(lut, width: int, height: int) -> gpu.types.GPUTexture:
+        # LUT はカメラや解像度が変わったときだけ作り直す
+        if __class__.__lens_lut_texture_source is not lut:
+            data = gpu.types.Buffer("FLOAT", width * height * 4, pencil4_lens_remap.build_lut_texture_data(lut))
+            __class__.__lens_lut_texture = gpu.types.GPUTexture((width, height), format='RGBA32F', data=data)
+            __class__.__lens_lut_texture_source = lut
+        return __class__.__lens_lut_texture
+
     @staticmethod
     def __get_shader_batch(shader: gpu.types.GPUShader):
         return batch_for_shader(shader,
@@ -511,6 +598,69 @@ class ViewportLineRenderManager:
         shader.uniform_float("size", size if size is not None else (1.0, 1.0))
         __class__.__get_shader_batch(shader).draw(shader)
 
+    @staticmethod
+    def __draw_lens_texture(space: bpy.types.SpaceView3D, face_textures, lut_tex: gpu.types.GPUTexture,
+                            origin: Tuple[float, float] = None, size: Tuple[float, float] = None, apply_color_correction: bool = True):
+        shader = __class__.__get_draw_lens_shader()
+        shader.bind()
+        __class__.__setup_shader_common(shader, space)
+        for face_index, texture in enumerate(face_textures):
+            shader.uniform_sampler(f"faceTex{face_index}", texture)
+        shader.uniform_sampler("lutTex", lut_tex)
+        shader.uniform_float("origin", origin if origin is not None else (0.0, 0.0))
+        shader.uniform_float("size", size if size is not None else (1.0, 1.0))
+        shader.uniform_float("applyColorCorrection", 1.0 if apply_color_correction else 0.0)
+        __class__.__get_shader_batch(shader).draw(shader)
+
+
+    @classmethod
+    def draw_lens_line_data(cls, space: bpy.types.SpaceView3D, lens_data, width: int, height: int,
+                            render_session: pencil4_render_session.Pencil4RenderSession,
+                            origin: Tuple[float, float] = None, size: Tuple[float, float] = None, apply_color_correction: bool = True):
+        face_buffers, lut, face_size, first_version, update_token = lens_data
+        completed = False
+        try:
+            face_textures = render_session.get_lens_face_textures()
+            if face_buffers is None:
+                if not render_session.has_lens_face_texture_cache(first_version, face_size):
+                    raise RuntimeError("Lens face texture cache is no longer available.")
+            else:
+                if len(face_buffers) != len(face_textures):
+                    raise RuntimeError("Lens face image buffers are incomplete.")
+                for face_index, face_buffer in enumerate(face_buffers):
+                    pixels = gpu.types.Buffer("FLOAT", face_size * face_size * 4, face_buffer)
+                    texture = gpu.types.GPUTexture((face_size, face_size), format='RGBA16F', data=pixels)
+                    render_session.set_lens_face_texture(face_index, texture)
+            if any(texture is None for texture in face_textures):
+                raise RuntimeError("Lens face texture cache is incomplete.")
+            lut_tex = cls.__get_lens_lut_texture(lut, width, height)
+            cls.__draw_lens_texture(space, face_textures, lut_tex, origin, size, apply_color_correction)
+            if face_buffers is not None:
+                render_session.finish_lens_face_texture_update(update_token, first_version)
+            completed = True
+        finally:
+            if not completed:
+                render_session.invalidate_lens_face_texture_cache()
+
+    @staticmethod
+    def draw_viewport_line_data(viewport_data, width: int, height: int,
+                                render_session: pencil4_render_session.Pencil4RenderSession, draw_texture):
+        pixels, version, update_token = viewport_data
+        completed = False
+        try:
+            if pixels is None:
+                if not render_session.has_viewport_texture_cache(version, width, height):
+                    raise RuntimeError("Viewport texture cache is no longer available.")
+            else:
+                buffer = gpu.types.Buffer("FLOAT", width * height * 4, pixels)
+                render_session.set_viewport_texture(gpu.types.GPUTexture((width, height), data=buffer), width, height)
+            draw_texture(render_session.get_viewport_texture())
+            if pixels is not None:
+                render_session.finish_viewport_texture_update(update_token, version)
+            completed = True
+        finally:
+            if not completed:
+                render_session.invalidate_viewport_texture_cache()
 
     @classmethod
     def __draw_2d(cls, space: bpy.types.Space):
@@ -710,6 +860,9 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
 
     def cleanup(self, context):
         self.restore_render_image_settings(context)
+        if self.session is not None:
+            self.session.clear_texture_caches()
+            self.session = None
         output_image = __class__.get_render_result_override_image()
         if output_image is not None:
             output_image.pack()
@@ -791,13 +944,24 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                     self.session = RenderSession()
                 depsgraph = context.evaluated_depsgraph_get()
                 width, height = pencil4_render_session.get_render_size(depsgraph)
-                def matrix_override(camera_matrix, window_matrix):
-                    return _calc_matrix_override(width, height, region, region_3d, depsgraph, camera_matrix, window_matrix)
-                draw_ret = self.session.draw_line_for_viewport(context.evaluated_depsgraph_get(), width, height, space, region_3d, matrix_override)
+                lens_camera = _get_nonlinear_lens_camera(space, region_3d, context.scene)
+                lens_data = None
+                viewport_data = None
+                if lens_camera is None:
+                    def matrix_override(camera_matrix, window_matrix):
+                        return _calc_matrix_override(width, height, region, region_3d, depsgraph, camera_matrix, window_matrix)
+                    draw_ret = self.session.draw_line_for_viewport(depsgraph, width, height, space, region_3d, matrix_override)
+                elif pencil4_lens_remap.is_supported_camera(lens_camera.data):
+                    draw_ret, lens_data = self.session.draw_line_for_viewport_lens(depsgraph, width, height, space, region_3d, lens_camera)
+                else:
+                    # 未対応のレンズはライン描画を行わない（ビューポートと同じ）
+                    draw_ret = pencil4line_for_blender.draw_ret.success
                 if draw_ret != pencil4line_for_blender.draw_ret.success and draw_ret != pencil4line_for_blender.draw_ret.success_without_license:
                     self.report({'ERROR'}, "Failed to render lines.")
                     self.cancel(context)
                     return {'CANCELLED'}
+                if lens_camera is None:
+                    viewport_data = self.session.get_viewport_line_data(width, height)
                 
                 # レンダリング結果にライン描画結果を合成する
                 if bpy.app.version >= (3, 1, 0):
@@ -822,12 +986,14 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
                                 gpu.state.blend_set("ALPHA")
                                 draw_texture_2d(tex, (-1, -1), 2, 2)
                                 del tex
-                            if len(self.session.get_viewport_image_buffer()) == width * height * 4:
-                                pixels = gpu.types.Buffer("FLOAT", width * height * 4, self.session.get_viewport_image_buffer())
-                                tex = gpu.types.GPUTexture((width, height), data=pixels)
+                            if lens_camera is not None:
+                                if lens_data is not None:
+                                    gpu.state.blend_set("ALPHA_PREMULT")
+                                    ViewportLineRenderManager.draw_lens_line_data(space, lens_data, width, height, self.session, apply_color_correction=False)
+                            elif viewport_data is not None:
                                 gpu.state.blend_set("ALPHA_PREMULT")
-                                draw_texture_2d(tex, (-1, -1), 2, 2)
-                                del tex
+                                ViewportLineRenderManager.draw_viewport_line_data(viewport_data, width, height, self.session,
+                                                                                  lambda tex: draw_texture_2d(tex, (-1, -1), 2, 2))
                     buffer = fb.read_color(0, 0, width, height, 4, 0, 'FLOAT')
                 offscreen.free()
                 buffer.dimensions = width * height * 4
@@ -883,6 +1049,33 @@ class PCL4_OT_ViewportRender(bpy.types.Operator):
 
     def cancel(self, context):
         self.cleanup(context)
+
+
+def _get_nonlinear_lens_camera(space, region_3d, scene):
+    """カメラビューで表示中のカメラが非線形レンズ（パノラマ・魚眼）で、専用経路の描画対象の場合そのカメラを返す。"""
+    if region_3d.view_perspective != "CAMERA":
+        return None
+    if not _is_lens_line_available(space, scene):
+        return None
+    camera = space.camera if space.camera is not None and space.camera.type == "CAMERA" else scene.camera
+    if camera is None or camera.type != "CAMERA" or not pencil4_lens_remap.is_nonlinear_camera(camera.data):
+        return None
+    return camera
+
+
+def _get_preview_renderer(space, scene) -> str:
+    """ビューポートのプレビューに使われているレンダラー（エンジン識別子）を返す。"""
+    if space.shading.type == "RENDERED":
+        return scene.render.engine
+    if space.shading.type == "MATERIAL":
+        # マテリアルプレビューは EEVEE で描画される
+        return "BLENDER_EEVEE"
+    return "BLENDER_WORKBENCH"
+
+
+def _is_lens_line_available(space, scene) -> bool:
+    """パノラマ・魚眼のライン描画を行うか判定する。EEVEE は Blender 5.3 以降、Cycles は常に対象とする。"""
+    return pencil4_lens_remap.is_lens_line_available_for_renderer(_get_preview_renderer(space, scene), bpy.app.version)
 
 
 def _calc_matrix_override(width: int, height: int, region, region_3d, depsgraph, camera_matrix, window_matrix):

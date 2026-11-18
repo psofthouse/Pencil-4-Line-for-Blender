@@ -58,6 +58,8 @@ def on_pre_render(scene: bpy.types.Scene):
             __session = RenderSession()
             pencil4_viewport.ViewportLineRenderManager.in_render_session = True
             pencil4_render_images.setup_images(scene)
+            # レンダリング中に bpy.data を変更すると不安定になるため、描画前に一時画像を確保する
+            __session.prepare_lens_temp_images(scene)
     else:
         __session.cleanup_frame()
 

@@ -2,6 +2,8 @@
 # The Original Code is Copyright (C) P SOFTHOUSE Co., Ltd. All rights reserved.
 
 import bpy
+import re
+import secrets
 from collections import OrderedDict
 
 # このコードについて:
@@ -10,6 +12,7 @@ from collections import OrderedDict
 
 CURVE_NODE_TREE_NAME = "Pencil+ 4 Curve Helper Node Tree"
 CURVE_NODE_TREE_PROP = "is_pencil4_curve_helper_node_tree"
+tmp_merge_source_curve_tree = None
 
 def default_tree(create_if_none = True):
     # 既存のカーブノードツリー探索
@@ -32,9 +35,31 @@ def default_tree(create_if_none = True):
     return None
 
 
+def _new_curve_name(tree):
+    while True:
+        name = "curve_" + secrets.token_urlsafe(6)
+        if name not in tree.nodes:
+            return name
+
+
+def randomize_curve_names(tree, curve_names):
+    renamed = {}
+    if tree is None or tree.library is not None:
+        return renamed
+    for curve_name in curve_names:
+        if re.fullmatch(r"curve_[A-Za-z0-9_-]{8}", curve_name) is not None:
+            continue
+        curve = get_curve_data(tree, curve_name)
+        if curve is None:
+            continue
+        curve.name = _new_curve_name(tree)
+        renamed[curve_name] = curve.name
+    return renamed
+
+
 def create_curve_data(tree: bpy.types.NodeTree, locations=None):
     cn = tree.nodes.new("ShaderNodeFloatCurve")
-    cn.name = "curve"
+    cn.name = _new_curve_name(tree)
 
     if locations is not None and len(locations) > 1:
         curve_mapping = cn.mapping.curves[0]
@@ -46,6 +71,24 @@ def create_curve_data(tree: bpy.types.NodeTree, locations=None):
                 curve_mapping.points.new(location[0], location[1])
         
     return cn.name
+
+
+def copy_curve_data(tree: bpy.types.NodeTree, curve_node: bpy.types.Node):
+    if tree is None or curve_node is None:
+        return None
+    new_curve = tree.nodes.new("ShaderNodeFloatCurve")
+    new_curve.name = _new_curve_name(tree)
+    curve_mapping = new_curve.mapping.curves[0]
+    original_curve_mapping = curve_node.mapping.curves[0]
+    for i, point in enumerate(original_curve_mapping.points):
+        if i < len(curve_mapping.points):
+            curve_mapping.points[i].location[0] = point.location[0]
+            curve_mapping.points[i].location[1] = point.location[1]
+            curve_mapping.points[i].handle_type = point.handle_type
+        else:
+            curve_mapping.points.new(point.location[0], point.location[1])
+            curve_mapping.points[-1].handle_type = point.handle_type
+    return new_curve.name
 
 
 def count_curve_reference(curve_tree: bpy.types.NodeTree, curve_node: bpy.types.Node) -> int:
